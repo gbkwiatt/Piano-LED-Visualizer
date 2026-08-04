@@ -22,6 +22,7 @@ from zipfile import ZipFile
 import json
 import ast
 import re
+from lib.ledstrip import STRIP2
 from lib.rpi_drivers import GPIO
 from lib.log_setup import logger
 from flask import abort
@@ -444,7 +445,7 @@ def change_setting():
                            error=f"The first strip is on pin {pin1}, so the second one has to use the "
                                  f"other PWM channel: {', '.join(allowed)}.")
 
-        app_state.usersettings.change_setting_value("led_pin2", pin_value)
+        app_state.usersettings.change_setting_value((STRIP2, "led_pin"), pin_value)
         app_state.usersettings.save_changes()
         app_state.platform.restart_visualizer()
         return jsonify(success=True, restart_required=True,
@@ -1161,7 +1162,7 @@ def change_setting():
         channel_value = 0 if pin_value in PWM_CHANNEL_0_PINS else 1
 
         if app_state.ledstrip.strip2_enabled:
-            pin2 = str(app_state.usersettings.get_setting_value("led_pin2"))
+            pin2 = str(app_state.usersettings.get_setting_value((STRIP2, "led_pin")))
             if pin2 not in second_strip_pins(pin_value):
                 return jsonify(success=False,
                                error=f"Pin {pin_value} shares a PWM channel with the second LED strip "
@@ -2006,7 +2007,7 @@ def get_settings():
     response["led_shift"] = app_state.usersettings.get_setting_value("shift")
     response["led_reverse"] = app_state.usersettings.get_setting_value("reverse")
     led_pin = app_state.usersettings.get_setting_value("led_pin") or "18"
-    led_pin2 = app_state.usersettings.get_setting_value("led_pin2") or "13"
+    led_pin2 = app_state.usersettings.get_setting_value((STRIP2, "led_pin")) or "13"
     allowed_pins2 = second_strip_pins(led_pin)
     # Offer the header pins, plus whatever is configured so the dropdown can show it.
     pin2_options = [p for p in allowed_pins2 if p in HEADER_LED_PINS or p == led_pin2]
@@ -2014,11 +2015,11 @@ def get_settings():
     response["led_strip2_enabled"] = app_state.usersettings.get_setting_value("led_strip2_enabled") or "0"
     response["led_pin2"] = led_pin2
     response["led_pin2_options"] = pin2_options
-    response["brightness2"] = app_state.usersettings.get_setting_value("brightness_percent2")
-    response["led_count2"] = app_state.usersettings.get_setting_value("led_count2")
-    response["leds_per_meter2"] = app_state.usersettings.get_setting_value("leds_per_meter2")
-    response["led_shift2"] = app_state.usersettings.get_setting_value("shift2")
-    response["led_reverse2"] = app_state.usersettings.get_setting_value("reverse2")
+    response["brightness2"] = app_state.usersettings.get_setting_value((STRIP2, "brightness_percent"))
+    response["led_count2"] = app_state.usersettings.get_setting_value((STRIP2, "led_count"))
+    response["leds_per_meter2"] = app_state.usersettings.get_setting_value((STRIP2, "leds_per_meter"))
+    response["led_shift2"] = app_state.usersettings.get_setting_value((STRIP2, "shift"))
+    response["led_reverse2"] = app_state.usersettings.get_setting_value((STRIP2, "reverse"))
     response["led_strip2_active"] = app_state.ledstrip.strip_secondary is not None
 
     response["color_mode"] = app_state.usersettings.get_setting_value("color_mode")

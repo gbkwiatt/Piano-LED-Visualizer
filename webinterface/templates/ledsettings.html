@@ -110,7 +110,7 @@
                     data-translate="led_strips">LED Strips</span>
             </div>
 
-            <div id="led_strip_tabs" class="flex glass-light rounded-glass p-1 space-x-1">
+            <div id="led_strip_tabs" class="hidden flex glass-light rounded-glass p-1 space-x-1">
                 <button type="button" data-strip="1" onclick="set_active_led_strip(1)"
                     class="strip-tab glass shadow-glass h-8 px-4 rounded-glass text-sm font-semibold transition-smooth-fast">LED
                     1</button>
@@ -119,7 +119,7 @@
                     2</button>
             </div>
 
-            <div id="led_strip2_controls" class="flex items-center flex-wrap gap-4" hidden>
+            <div class="flex items-center flex-wrap gap-4">
                 <div class="flex items-center">
                     <input id="led_strip2_enabled" type="checkbox"
                         onclick="handleStrip2EnabledChange(this)"
@@ -129,7 +129,7 @@
                         class="pl-2 text-xs font-semibold text-gray-600 dark:text-gray-400"
                         data-translate="enable_second_strip">Enable second strip</label>
                 </div>
-                <div class="flex items-center space-x-2">
+                <div id="led_strip2_pin_group" class="hidden flex items-center space-x-2">
                     <label for="led_pin2" class="text-xs font-semibold text-gray-600 dark:text-gray-400"
                         data-translate="second_strip_pin">Pin</label>
                     <div class="relative">
@@ -144,7 +144,7 @@
                         </div>
                     </div>
                 </div>
-                <span id="led_strip2_status" class="text-xs font-semibold text-red-500" hidden></span>
+                <span id="led_strip2_status" class="hidden text-xs font-semibold text-red-500"></span>
             </div>
 
             <span class="text-xs text-gray-500 dark:text-gray-400 basis-full" data-translate="per_strip_hint">
@@ -190,7 +190,8 @@
                             d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                     <span class="font-semibold text-sm" data-translate="brightness_display">Brightness & Display</span>
-                    <span class="strip-badge glass-light rounded-glass px-2 py-0.5 text-xs font-semibold">LED 1</span>
+                    <span class="strip-badge hidden glass-light rounded-glass px-2 py-0.5 text-xs font-semibold">LED
+                        1</span>
                 </div>
             </div>
             <div class="p-3 pt-0 space-y-3">
@@ -293,7 +294,8 @@
                             d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                     </svg>
                     <span class="font-semibold text-sm" data-translate="adjustments">Adjustments</span>
-                    <span class="strip-badge glass-light rounded-glass px-2 py-0.5 text-xs font-semibold">LED 1</span>
+                    <span class="strip-badge hidden glass-light rounded-glass px-2 py-0.5 text-xs font-semibold">LED
+                        1</span>
                 </div>
             </div>
             <div class="p-3 pt-0 space-y-3">

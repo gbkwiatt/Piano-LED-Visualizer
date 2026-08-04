@@ -23,6 +23,7 @@ class UserSettings:
 
         self.pending_reset = False
 
+        self.migrate_strip2()
         self.copy_missing()
         if self.pending_changes:
             self.save_changes()
@@ -126,6 +127,47 @@ class UserSettings:
             else:
                 dict[elem.tag] = {}
                 self.xml_to_dict(dict[elem.tag], elem)
+
+    # Keys the second strip must never inherit from the first, because sharing them
+    # is what the hardware forbids: both strips cannot sit on the same PWM channel.
+    STRIP2_NOT_INHERITED = {"led_pin"}
+
+    def migrate_strip2(self):
+        """Seed <strip2> from the first strip's settings the first time it appears.
+
+        A second strip that starts out behaving like the first is far less surprising
+        than one that jumps to factory defaults. An earlier release kept its handful of
+        second-strip settings as flat <key>2 entries; those take precedence and are
+        then removed.
+        """
+        if self.root.find("strip2") is not None:
+            return
+
+        default_strip2 = ET.parse(self.DEFAULT_CONFIG_FILE).getroot().find("strip2")
+        if default_strip2 is None:
+            return
+
+        strip2 = ET.SubElement(self.root, "strip2")
+        legacy_elements = []
+        for default_elem in default_strip2:
+            key = default_elem.tag
+            legacy = self.root.find(key + "2")
+            inherited = None if key in self.STRIP2_NOT_INHERITED else self.root.find(key)
+
+            elem = ET.SubElement(strip2, key)
+            if legacy is not None and legacy.text is not None:
+                elem.text = legacy.text
+                legacy_elements.append(legacy)
+            elif inherited is not None and inherited.text is not None:
+                elem.text = inherited.text
+            else:
+                elem.text = default_elem.text
+
+        for legacy in legacy_elements:
+            self.root.remove(legacy)
+
+        self.pending_changes = True
+        logger.info("Created <strip2> settings from the first strip's current values.")
 
     def copy_missing(self):
         path = []

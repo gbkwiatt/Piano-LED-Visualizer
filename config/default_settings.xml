@@ -155,12 +155,81 @@
 	<led_channel>0</led_channel>
 
 	<led_strip2_enabled>0</led_strip2_enabled>
-	<led_pin2>13</led_pin2>
-	<brightness_percent2>50</brightness_percent2>
-	<led_count2>176</led_count2>
-	<leds_per_meter2>144</leds_per_meter2>
-	<shift2>0</shift2>
-	<reverse2>0</reverse2>
+
+	<!-- Second LED strip: same keys as the top level, so both strips carry a full
+	     independent set. Gamma is deliberately absent - it is a property of the
+	     shared ws2811 controller and applies to both. -->
+	<strip2>
+		<brightness_percent>50</brightness_percent>
+		<led_count>176</led_count>
+		<leds_per_meter>144</leds_per_meter>
+		<shift>0</shift>
+		<reverse>0</reverse>
+		<adjacent_blue>255</adjacent_blue>
+		<adjacent_green>255</adjacent_green>
+		<adjacent_mode>Off</adjacent_mode>
+		<adjacent_red>255</adjacent_red>
+		<animation_speed_fast>5</animation_speed_fast>
+		<animation_speed_medium>20</animation_speed_medium>
+		<animation_speed_slow>50</animation_speed_slow>
+		<backlight_blue>255</backlight_blue>
+		<backlight_brightness>0</backlight_brightness>
+		<backlight_brightness_percent>0</backlight_brightness_percent>
+		<backlight_green>255</backlight_green>
+		<backlight_red>255</backlight_red>
+		<blue>255</blue>
+		<color_mode>Single</color_mode>
+		<disable_backlight_on_idle>1</disable_backlight_on_idle>
+		<fadepedal_notedrop>0</fadepedal_notedrop>
+		<fadingspeed>1000</fadingspeed>
+		<gradient_end_blue>255</gradient_end_blue>
+		<gradient_end_green>0</gradient_end_green>
+		<gradient_end_red>0</gradient_end_red>
+		<gradient_start_blue>0</gradient_start_blue>
+		<gradient_start_green>0</gradient_start_green>
+		<gradient_start_red>255</gradient_start_red>
+		<green>255</green>
+		<key_in_scale_blue>0</key_in_scale_blue>
+		<key_in_scale_green>255</key_in_scale_green>
+		<key_in_scale_red>0</key_in_scale_red>
+		<key_not_in_scale_blue>0</key_not_in_scale_blue>
+		<key_not_in_scale_green>0</key_not_in_scale_green>
+		<key_not_in_scale_red>255</key_not_in_scale_red>
+		<led_animation_brightness_percent>50</led_animation_brightness_percent>
+		<led_animation_speed>Medium</led_animation_speed>
+		<mode>Normal</mode>
+		<multicolor>[[255, 255, 255], [0, 0, 255], [0, 255, 0]]</multicolor>
+		<multicolor_iteration>0</multicolor_iteration>
+		<multicolor_range>[[20, 54], [54, 108], [35, 75]]</multicolor_range>
+		<note_offsets>[[92, 2], [55, 1]]</note_offsets>
+		<pedal_speed>1000</pedal_speed>
+		<pulse_animation_distance>10</pulse_animation_distance>
+		<pulse_animation_speed>1000</pulse_animation_speed>
+		<pulse_flicker_speed>30</pulse_flicker_speed>
+		<pulse_flicker_strength>5</pulse_flicker_strength>
+		<rainbow_colormap>Rainbow</rainbow_colormap>
+		<rainbow_offset>0</rainbow_offset>
+		<rainbow_scale>100</rainbow_scale>
+		<rainbow_timeshift>0</rainbow_timeshift>
+		<red>255</red>
+		<scale_key>0</scale_key>
+		<sequence_active>False</sequence_active>
+		<skipped_notes>None</skipped_notes>
+		<speed_fastest_blue>0</speed_fastest_blue>
+		<speed_fastest_green>0</speed_fastest_green>
+		<speed_fastest_red>255</speed_fastest_red>
+		<speed_max_notes>18</speed_max_notes>
+		<speed_period_in_seconds>0.8</speed_period_in_seconds>
+		<speed_slowest_blue>255</speed_slowest_blue>
+		<speed_slowest_green>255</speed_slowest_green>
+		<speed_slowest_red>255</speed_slowest_red>
+		<velocity_speed>1000</velocity_speed>
+		<velocityrainbow_colormap>Rainbow-FastLED</velocityrainbow_colormap>
+		<velocityrainbow_curve>0</velocityrainbow_curve>
+		<velocityrainbow_offset>210</velocityrainbow_offset>
+		<velocityrainbow_scale>120</velocityrainbow_scale>
+		<led_pin>13</led_pin>
+	</strip2>
 
     <hotspot_password>visualizer</hotspot_password>
 

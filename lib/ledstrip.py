@@ -7,11 +7,15 @@ from lib.dual_strip import (DualChannelController, MirroredStrip, build_index_ma
 from lib.log_setup import logger
 
 
-def _setting_int(usersettings, name, default):
+def _setting_int(usersettings, key, default):
+    """Read an int setting. `key` is a flat name or a (section, name) tuple."""
     try:
-        return int(usersettings.get_setting_value(name))
+        return int(usersettings.get_setting_value(key))
     except (ValueError, TypeError):
         return default
+
+
+STRIP2 = "strip2"
 
 
 class LedStrip:
@@ -29,16 +33,17 @@ class LedStrip:
         self.brightness = 255 * self.brightness_percent / 100
         self.led_gamma = float(usersettings.get_setting_value("led_gamma"))
 
-        # Second strip. Geometry is independent; gamma is not, because
-        # ws2811_set_custom_gamma_factor applies to the whole controller.
+        # Second strip. Its settings live under <strip2> in settings.xml. Gamma is
+        # absent there on purpose: ws2811_set_custom_gamma_factor applies to the
+        # whole controller, so both strips share it.
         self.strip2_enabled = bool(_setting_int(usersettings, "led_strip2_enabled", 0))
-        self.brightness_percent2 = _setting_int(usersettings, "brightness_percent2", 50)
-        self.led_number2 = max(1, _setting_int(usersettings, "led_count2", 176))
-        self.leds_per_meter2 = max(1, _setting_int(usersettings, "leds_per_meter2", 144))
-        self.shift2 = _setting_int(usersettings, "shift2", 0)
-        self.reverse2 = _setting_int(usersettings, "reverse2", 0)
+        self.brightness_percent2 = _setting_int(usersettings, (STRIP2, "brightness_percent"), 50)
+        self.led_number2 = max(1, _setting_int(usersettings, (STRIP2, "led_count"), 176))
+        self.leds_per_meter2 = max(1, _setting_int(usersettings, (STRIP2, "leds_per_meter"), 144))
+        self.shift2 = _setting_int(usersettings, (STRIP2, "shift"), 0)
+        self.reverse2 = _setting_int(usersettings, (STRIP2, "reverse"), 0)
         self.brightness2 = 255 * self.brightness_percent2 / 100
-        self.LED_PIN2 = _setting_int(usersettings, "led_pin2", 13)
+        self.LED_PIN2 = _setting_int(usersettings, (STRIP2, "led_pin"), 13)
 
         self.controller = None
         self.strip_primary = None
@@ -240,7 +245,7 @@ class LedStrip:
     def change_brightness2(self, value):
         self.brightness_percent2 = clamp(int(value), 1, 100)
         self.brightness2 = 255 * self.brightness_percent2 / 100
-        self.usersettings.change_setting_value("brightness_percent2", self.brightness_percent2)
+        self.usersettings.change_setting_value((STRIP2, "brightness_percent"), self.brightness_percent2)
         if self.strip_secondary is not None:
             self.strip_secondary.setBrightness(int(self.brightness2))
 
@@ -249,21 +254,21 @@ class LedStrip:
         built, and tearing that down while the render loop is running is not safe,
         so the caller restarts the visualizer to apply it."""
         self.led_number2 = max(1, int(value))
-        self.usersettings.change_setting_value("led_count2", self.led_number2)
+        self.usersettings.change_setting_value((STRIP2, "led_count"), self.led_number2)
 
     def change_leds_per_meter2(self, value):
         self.leds_per_meter2 = max(1, int(value))
-        self.usersettings.change_setting_value("leds_per_meter2", self.leds_per_meter2)
+        self.usersettings.change_setting_value((STRIP2, "leds_per_meter"), self.leds_per_meter2)
         self._refresh_index_map()
 
     def change_shift2(self, value):
         self.shift2 = int(value)
-        self.usersettings.change_setting_value("shift2", self.shift2)
+        self.usersettings.change_setting_value((STRIP2, "shift"), self.shift2)
         self._refresh_index_map()
 
     def change_reverse2(self, value):
         self.reverse2 = clamp(int(value), 0, 1)
-        self.usersettings.change_setting_value("reverse2", self.reverse2)
+        self.usersettings.change_setting_value((STRIP2, "reverse"), self.reverse2)
         self._refresh_index_map()
 
     def set_adjacent_colors(self, note, color, led_turn_off, fading=1):

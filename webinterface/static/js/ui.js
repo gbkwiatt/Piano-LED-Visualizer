@@ -615,8 +615,13 @@ const STRIP_RESPONSE_KEYS = {
     reverse: ["led_reverse", "led_reverse2"]
 };
 
-function strip_setting_name(field) {
-    return STRIP_SETTING_NAMES[field][active_led_strip - 1];
+// Writes back into config_settings too: nothing re-fetches after a plain setting
+// change, and switching tabs repopulates the form from that cache.
+function change_strip_setting(field, value) {
+    change_setting(STRIP_SETTING_NAMES[field][active_led_strip - 1], value);
+    if (config_settings) {
+        config_settings[STRIP_RESPONSE_KEYS[field][active_led_strip - 1]] = value;
+    }
 }
 
 function apply_strip_settings_to_form(settings) {
@@ -646,12 +651,30 @@ function set_active_led_strip(strip) {
         badge.textContent = "LED " + strip;
     });
 
-    const strip2Controls = document.getElementById("led_strip2_controls");
-    if (strip2Controls) {
-        strip2Controls.hidden = strip !== 2;
-    }
-
     apply_strip_settings_to_form(config_settings);
+}
+
+// With one strip there is nothing to switch between, so the tabs and the per-panel
+// badges only appear once the second strip is on. The enable checkbox sits outside
+// the tabs so it stays reachable either way.
+//
+// These toggle the `hidden` class rather than the attribute: Tailwind's `.flex`
+// comes after `[hidden]` in the stylesheet at equal specificity, so the attribute
+// alone would not hide a flex container.
+function set_second_strip_available(enabled) {
+    ["led_strip_tabs", "led_strip2_pin_group"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.toggle("hidden", !enabled);
+        }
+    });
+    document.querySelectorAll(".strip-badge").forEach(badge => {
+        badge.classList.toggle("hidden", !enabled);
+    });
+
+    if (!enabled && active_led_strip === 2) {
+        set_active_led_strip(1);
+    }
 }
 
 function apply_strip2_settings_to_form(settings) {
@@ -660,6 +683,7 @@ function apply_strip2_settings_to_form(settings) {
         return;
     }
     enabledEl.checked = settings["led_strip2_enabled"] === "1";
+    set_second_strip_available(enabledEl.checked);
 
     // Both strips share one ws2811 controller, so the second one can only use the
     // PWM channel the first is not on. The server decides which pins those are.
@@ -678,7 +702,7 @@ function apply_strip2_settings_to_form(settings) {
     const statusEl = document.getElementById("led_strip2_status");
     const failed = enabledEl.checked && settings["led_strip2_active"] === false;
     statusEl.textContent = failed ? translate('second_strip_not_active') : "";
-    statusEl.hidden = !failed;
+    statusEl.classList.toggle("hidden", !failed);
 }
 
 function get_settings(home = true) {
