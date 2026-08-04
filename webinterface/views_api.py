@@ -30,14 +30,11 @@ from flask import abort
 
 SENSECOVER = 12
 
-# Either strip can use any of these pins. What constrains them is that the two
-# strips share one ws2811 controller and so must sit on different PWM channels;
-# the grouping below is what that check compares. Only 12/18 and 13/19 are on the
-# 40-pin header, the rest are Compute Module pins that led_pin has always accepted.
+# Both strips share one ws2811 controller, so they must sit on different PWM
+# channels. 41/45/53 are Compute Module pins that led_pin has always accepted.
 PWM_CHANNEL_0_PINS = ['12', '18']
 PWM_CHANNEL_1_PINS = ['13', '19', '41', '45', '53']
 VALID_LED_PINS = PWM_CHANNEL_0_PINS + PWM_CHANNEL_1_PINS
-# The subset the web UI offers, matching the LED Pin dropdown on the home page.
 HEADER_LED_PINS = ['12', '13', '18', '19']
 
 
@@ -242,8 +239,7 @@ def change_setting():
         return jsonify(success=False,
                        error="The second LED strip is not running, so its settings cannot be changed. "
                              "Check the logs for why it failed to start.")
-    # Persist per-strip values into the selected strip's own settings section;
-    # anything genuinely global still goes through usersettings directly.
+    # Per-strip values go through this; global ones use usersettings directly.
     set_setting = ledsettings.set_setting
 
     reload_sequence = True
@@ -1959,12 +1955,10 @@ def get_system_time():
 @webinterface.route('/api/get_settings', methods=['GET'])
 def get_settings():
     response = {}
-    ledsettings, ledstrip = resolve_strip(request.args.get('strip'))
+    ledsettings, _ = resolve_strip(request.args.get('strip'))
     if ledsettings is None:
-        # Reading is harmless, so fall back to the first strip; led_strip2_active
-        # in the response tells the page the second one did not come up.
-        ledsettings, ledstrip = app_state.ledsettings, app_state.ledstrip
-    # Every LED value below comes from the selected strip's own settings section.
+        # Reading is harmless; led_strip2_active tells the page it did not come up.
+        ledsettings = app_state.ledsettings
     get = ledsettings.get_setting
 
     red = get("red")
@@ -2036,12 +2030,10 @@ def get_settings():
     response["leds_per_meter"] = get("leds_per_meter")
     response["led_shift"] = get("shift")
     response["led_reverse"] = get("reverse")
-    # Always the first strip's pin, whichever strip is selected: it is what decides
-    # which PWM channel is left for the second one.
+    # Always the first strip's pin: it decides which channel is left for the second.
     led_pin = app_state.usersettings.get_setting_value("led_pin") or "18"
     led_pin2 = app_state.usersettings.get_setting_value((STRIP2, "led_pin")) or "13"
     allowed_pins2 = second_strip_pins(led_pin)
-    # Offer the header pins, plus whatever is configured so the dropdown can show it.
     pin2_options = [p for p in allowed_pins2 if p in HEADER_LED_PINS or p == led_pin2]
 
     response["led_strip2_enabled"] = app_state.usersettings.get_setting_value("led_strip2_enabled") or "0"

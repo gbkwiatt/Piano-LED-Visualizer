@@ -27,7 +27,6 @@ class AppState:
         self.usersettings = None
         self.ledsettings = None
         self.ledstrip = None
-        # Second strip; both stay None when it is disabled or failed to start.
         self.ledsettings2 = None
         self.ledstrip2 = None
         self.learning = None

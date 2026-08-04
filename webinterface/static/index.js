@@ -266,8 +266,7 @@ function handleLedPinChange(value, selectElement) {
     });
 }
 
-// Enabling, disabling or repinning the second strip rebuilds the ws2811 controller,
-// which is only safe while the render loop is down.
+// Rebuilding the ws2811 controller is only safe while the render loop is down.
 function requestVisualizerRestart(setting_name, value, confirmMessage, onCancel) {
     showConfirm(confirmMessage, function () {
         const xhttp = new XMLHttpRequest();
@@ -382,7 +381,6 @@ function change_setting(setting_name, value, second_value = false, disable_seque
         }
     }
     // Always URL-encode values; some settings (e.g. URLs) contain characters that would break the query string.
-    // `strip` tells the server which strip's settings section to write to.
     xhttp.open(
         "GET",
         "/api/change_setting?setting_name=" + encodeURIComponent(setting_name)

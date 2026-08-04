@@ -2,7 +2,7 @@ import time
 
 from rpi_ws281x import Color
 
-from lib.backlight_effects import scaled_backlight_rgb
+from lib.backlight_effects import backlight_color
 from lib.functions import get_note_position, find_between
 from lib.log_setup import logger
 
@@ -24,8 +24,8 @@ class MIDIEventProcessor:
     """
     def __init__(self, midiports, ledstrip, ledsettings, usersettings, saving, learning, menu, color_mode,
                  state_manager=None, notes_only=False):
-        # notes_only drives the second strip: it renders notes and the sustain pedal
-        # but stays out of recording, sequences and lessons, which belong to strip 1.
+        # The second strip renders notes and the pedal only; recording, sequences
+        # and lessons stay with the first.
         self.notes_only = notes_only
         self.midiports = midiports
         self.ledstrip = ledstrip
@@ -39,10 +39,6 @@ class MIDIEventProcessor:
         self.last_sustain = 0  # Track sustain pedal state
         # Time tracking for sequence advancement to prevent rapid triggering
         self.last_sequence_advance = 0
-
-    def process_midi_events(self):
-        """Drain the queue and render it. Convenience wrapper for the single-strip case."""
-        return self.render_events(self.collect_events())
 
     def collect_events(self):
         """Take a bounded slice of pending MIDI messages off the queue.
@@ -246,8 +242,7 @@ class MIDIEventProcessor:
 
         # If LED is completely off, set appropriate color
         if self.ledstrip.keylist[note_position] <= 0:
-            idle_color, use_backlight = self._resolve_idle_color()
-            self._apply_idle_color(note_position, idle_color, use_backlight)
+            self._apply_idle_color(note_position, self._backlight_is_visible())
 
         # Record the note-off event if recording is active
         if self.saving.is_recording and not self.notes_only:
@@ -376,7 +371,7 @@ class MIDIEventProcessor:
             # Handle sustain pedal release - clear all sustained notes
             pedal_deadzone = 10  # Standard MIDI deadzone for sustain pedal
             if value < pedal_deadzone and self.ledsettings.mode in ["Velocity", "Pedal"]:
-                idle_color, use_backlight = self._resolve_idle_color()
+                show_backlight = self._backlight_is_visible()
                 for i, sustained in enumerate(self.ledstrip.keylist_sustained):
                     if sustained == 1:
                         # Clear sustained status
@@ -384,7 +379,7 @@ class MIDIEventProcessor:
                         # If key is not currently pressed, turn it off
                         if self.ledstrip.keylist_status[i] == 0:
                             self.ledstrip.keylist[i] = 0  # Turn off immediately
-                            self._apply_idle_color(i, idle_color, use_backlight)
+                            self._apply_idle_color(i, show_backlight)
 
         current_time = time.time()
         # Handle sequence advancement based on control values
@@ -411,7 +406,7 @@ class MIDIEventProcessor:
             self.saving.add_control_change("control_change", 0, control, value, msg_timestamp)
 
     def clear_all_note_leds(self):
-        idle_color, use_backlight = self._resolve_idle_color()
+        show_backlight = self._backlight_is_visible()
         led_count = self.ledstrip.led_number
         self.ledstrip.keylist = [0] * led_count
         self.ledstrip.keylist_status = [0] * led_count
@@ -422,28 +417,21 @@ class MIDIEventProcessor:
         if hasattr(self.ledstrip, "active_pulses") and self.ledstrip.active_pulses is not None:
             self.ledstrip.active_pulses.clear()
         for i in range(led_count):
-            self._apply_idle_color(i, idle_color, use_backlight)
+            self._apply_idle_color(i, show_backlight)
         try:
             self.ledstrip.strip.show()
         except Exception:
             pass
 
-    def _resolve_idle_color(self):
-        """Whether idle keys return to the backlight, and at what brightness.
-
-        The colour itself is resolved per pixel in _apply_idle_color, because a
-        backlight effect can vary its brightness along the strip.
-        """
+    def _backlight_is_visible(self):
         screensaver = self.menu is not None and self.menu.screensaver_is_running
-        return None, self.ledsettings.backlight_brightness > 0 and not screensaver
+        return self.ledsettings.backlight_brightness > 0 and not screensaver
 
-    def _apply_idle_color(self, note_position, color_value, is_backlight):
-        """Apply either the backlight color or switch LEDs off for a key."""
-        if is_backlight:
-            red, green, blue = scaled_backlight_rgb(self.ledsettings, note_position,
-                                                    self.ledstrip.led_number)
-            color_value = Color(red, green, blue)
+    def _apply_idle_color(self, note_position, show_backlight):
+        """Return a key's LED to the backlight, or switch it off."""
+        if show_backlight:
+            color_value = backlight_color(self.ledsettings, note_position, self.ledstrip.led_number)
         else:
             color_value = OFF_COLOR
         self.ledstrip.strip.setPixelColor(note_position, color_value)
-        self.ledstrip.set_adjacent_colors(note_position, color_value, True if is_backlight else False)
+        self.ledstrip.set_adjacent_colors(note_position, color_value, show_backlight)

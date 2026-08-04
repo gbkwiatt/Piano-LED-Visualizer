@@ -39,26 +39,17 @@ class LedStrip:
         self.reverse = _setting_int(usersettings, self._key("reverse"), 0)
 
         self.brightness = 255 * self.brightness_percent / 100
-        # Gamma belongs to the shared controller, so it is always read from the top level.
+        # Gamma is a property of the shared controller, so it is never per-strip.
         self.led_gamma = float(usersettings.get_setting_value("led_gamma"))
 
-        # Second strip. Its settings live under <strip2> in settings.xml. Gamma is
-        # absent there on purpose: ws2811_set_custom_gamma_factor applies to the
-        # whole controller, so both strips share it.
         self.strip2_enabled = bool(_setting_int(usersettings, "led_strip2_enabled", 0))
         self.brightness_percent2 = _setting_int(usersettings, (STRIP2, "brightness_percent"), 50)
         self.led_number2 = max(1, _setting_int(usersettings, (STRIP2, "led_count"), 176))
-        self.leds_per_meter2 = max(1, _setting_int(usersettings, (STRIP2, "leds_per_meter"), 144))
-        self.shift2 = _setting_int(usersettings, (STRIP2, "shift"), 0)
-        self.reverse2 = _setting_int(usersettings, (STRIP2, "reverse"), 0)
         self.brightness2 = 255 * self.brightness_percent2 / 100
         self.LED_PIN2 = _setting_int(usersettings, (STRIP2, "led_pin"), 13)
 
-        # Set when this strip owns the shared two-channel controller (first strip only).
         self.controller = None
-        self.strip_primary = None
         self.strip_secondary = None
-        # A pixel target handed in from outside; when set, no hardware is created here.
         self.external_strip = strip
 
         # Hold individual led state information, initialized in init_strip()
@@ -96,7 +87,6 @@ class LedStrip:
 
         if self.external_strip is not None:
             self.strip = self.external_strip
-            self.strip_primary = self.external_strip
             return
 
         self._release_controller()
@@ -113,7 +103,6 @@ class LedStrip:
                 self.strip.begin()
                 if "releaseGIL" in dir(self.strip):
                     self.strip.releaseGIL()
-                self.strip_primary = self.strip
                 self.change_gamma(self.led_gamma)
             except Exception as e:
                 logger.warning(e)
@@ -127,13 +116,11 @@ class LedStrip:
 
                 logger.info("Failed to load LED strip.  Using emu driver.")
                 self.strip = PixelStrip_Emu(int(self.led_number))
-                self.strip_primary = self.strip
                 self.driver = "emu"
                 if self.strip2_enabled:
                     self._attach_emu_secondary()
         elif self.driver == "emu":
             self.strip = PixelStrip_Emu(int(self.led_number))
-            self.strip_primary = self.strip
             if self.strip2_enabled:
                 self._attach_emu_secondary()
 
@@ -168,9 +155,8 @@ class LedStrip:
             return False
 
         self.controller = controller
-        self.strip_primary = controller.channels[primary_channel]
+        self.strip = controller.channels[primary_channel]
         self.strip_secondary = controller.channels[secondary_channel]
-        self.strip = self.strip_primary
         self.change_gamma(self.led_gamma)
         logger.info(f"Second LED strip active on pin {self.LED_PIN2} "
                     f"({self.led_number2} LEDs, PWM channel {secondary_channel}).")

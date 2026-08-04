@@ -595,9 +595,7 @@ function changeHotspotPassword() {
         });
 }
 
-// Which strip the LED Settings page is editing. Every control on the page is
-// per-strip: the server reads and writes the selected strip's own settings
-// section, so the only thing the UI has to do is say which strip it means.
+// Which strip the LED Settings page is editing; the server does the routing.
 let active_led_strip = 1;
 
 function update_strip_tab_styles() {
@@ -618,17 +616,11 @@ function set_active_led_strip(strip) {
     }
     active_led_strip = strip;
     update_strip_tab_styles();
-    // Repopulate the whole page from the newly selected strip's settings.
     get_settings();
 }
 
-// With one strip there is nothing to switch between, so the tabs and the per-panel
-// badges only appear once the second strip is on. The enable checkbox sits outside
-// the tabs so it stays reachable either way.
-//
-// These toggle the `hidden` class rather than the attribute: Tailwind's `.flex`
-// comes after `[hidden]` in the stylesheet at equal specificity, so the attribute
-// alone would not hide a flex container.
+// Toggles the `hidden` class, not the attribute: Tailwind's `.flex` comes after
+// `[hidden]` at equal specificity, so the attribute alone would not hide these.
 function set_second_strip_available(enabled) {
     ["led_strip_tabs", "led_strip2_pin_group"].forEach(id => {
         const el = document.getElementById(id);
@@ -645,7 +637,6 @@ function set_second_strip_available(enabled) {
     }
 }
 
-// The shape controls are meaningless with no effect selected.
 function update_backlight_effect_visibility(effect) {
     const options = document.getElementById("backlight_effect_options");
     if (options) {
@@ -661,8 +652,7 @@ function apply_strip2_settings_to_form(settings) {
     enabledEl.checked = settings["led_strip2_enabled"] === "1";
     set_second_strip_available(enabledEl.checked);
 
-    // Both strips share one ws2811 controller, so the second one can only use the
-    // PWM channel the first is not on. The server decides which pins those are.
+    // Only the PWM channel the first strip is not on; the server decides which.
     const pinEl = document.getElementById("led_pin2");
     pinEl.innerHTML = "";
     (settings["led_pin2_options"] || []).forEach(pin => {
@@ -674,7 +664,7 @@ function apply_strip2_settings_to_form(settings) {
     pinEl.value = settings["led_pin2"];
     pinEl.setAttribute("data-current-value", settings["led_pin2"]);
 
-    // The strip can be enabled in settings yet fail to come up, e.g. on a pin clash.
+    // Enabled in settings, yet it can still fail to come up.
     const statusEl = document.getElementById("led_strip2_status");
     const failed = enabledEl.checked && settings["led_strip2_active"] === false;
     statusEl.textContent = failed ? translate('second_strip_not_active') : "";

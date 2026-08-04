@@ -1,5 +1,6 @@
 import time
 
+from lib.log_setup import logger
 from lib.rpi_drivers import GPIO
 
 from lib.functions import fastColorWipe
@@ -15,6 +16,7 @@ class GPIOHandler:
         self.usersettings = usersettings
         self.state_manager = state_manager
         self.disable_hat = str(usersettings.get_setting_value("disable_hat")) == "1"
+        self.disabled_buttons = set()
         self.setup_gpio()
 
     def setup_gpio(self):
@@ -41,54 +43,64 @@ class GPIOHandler:
         self.JPRESS = 13
         self.BACKLIGHT = 24
 
+        # A pin driving an LED strip must not also be polled as a button: the data
+        # stream would read as a stuck keypress. The HAT's joystick press (13) and
+        # one direction key (19) are the only PWM channel 1 pins on the header, so
+        # a second strip always takes one of them.
+        led_pins = {self.ledstrip.LED_PIN}
+        if self.ledstrip.strip_secondary is not None:
+            led_pins.add(self.ledstrip.LED_PIN2)
+        self.disabled_buttons = led_pins
+
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.KEYRIGHT, GPIO.IN, GPIO.PUD_UP)
-        GPIO.setup(self.KEYLEFT, GPIO.IN, GPIO.PUD_UP)
-        GPIO.setup(self.KEYUP, GPIO.IN, GPIO.PUD_UP)
-        GPIO.setup(self.KEYDOWN, GPIO.IN, GPIO.PUD_UP)
-        GPIO.setup(self.KEY1, GPIO.IN, GPIO.PUD_UP)
-        GPIO.setup(self.KEY2, GPIO.IN, GPIO.PUD_UP)
-        GPIO.setup(self.KEY3, GPIO.IN, GPIO.PUD_UP)
-        GPIO.setup(self.JPRESS, GPIO.IN, GPIO.PUD_UP)
+        for pin in (self.KEYRIGHT, self.KEYLEFT, self.KEYUP, self.KEYDOWN,
+                    self.KEY1, self.KEY2, self.KEY3, self.JPRESS):
+            if pin in led_pins:
+                logger.warning(f"GPIO {pin} drives an LED strip, so its HAT button is disabled.")
+                continue
+            GPIO.setup(pin, GPIO.IN, GPIO.PUD_UP)
+
+    def _pressed(self, pin):
+        return pin not in self.disabled_buttons and GPIO.input(pin) == 0
 
     def process_gpio_keys(self):
         if self.disable_hat:
             return
-        if GPIO.input(self.KEYUP) == 0:
+        if self._pressed(self.KEYUP):
             self.midiports.last_activity = time.time()
             if self.state_manager:
                 self.state_manager.update_user_activity()
             self.menu.change_pointer(0)
-            while GPIO.input(self.KEYUP) == 0:
+            while self._pressed(self.KEYUP):
                 time.sleep(0.001)
 
-        if GPIO.input(self.KEYDOWN) == 0:
+        if self._pressed(self.KEYDOWN):
             self.midiports.last_activity = time.time()
             if self.state_manager:
                 self.state_manager.update_user_activity()
             self.menu.change_pointer(1)
-            while GPIO.input(self.KEYDOWN) == 0:
+            while self._pressed(self.KEYDOWN):
                 time.sleep(0.001)
 
-        if GPIO.input(self.KEY1) == 0:
+        if self._pressed(self.KEY1):
             self.midiports.last_activity = time.time()
             if self.state_manager:
                 self.state_manager.update_user_activity()
             self.menu.enter_menu()
-            while GPIO.input(self.KEY1) == 0:
+            while self._pressed(self.KEY1):
                 time.sleep(0.001)
 
-        if GPIO.input(self.KEY2) == 0:
+        if self._pressed(self.KEY2):
             self.midiports.last_activity = time.time()
             if self.state_manager:
                 self.state_manager.update_user_activity()
             self.menu.go_back()
             if not self.menu.screensaver_is_running:
                 fastColorWipe(self.ledstrip.strip, True, self.ledsettings)
-            while GPIO.input(self.KEY2) == 0:
+            while self._pressed(self.KEY2):
                 time.sleep(0.01)
 
-        if GPIO.input(self.KEY3) == 0:
+        if self._pressed(self.KEY3):
             self.midiports.last_activity = time.time()
             if self.state_manager:
                 self.state_manager.update_user_activity()
@@ -101,27 +113,27 @@ class GPIOHandler:
                 label = "Learning" if new_mode == "learning" else "Light show"
                 self.menu.render_message("MIDI Mode", label, 1000)
                 fastColorWipe(self.ledstrip.strip, True, self.ledsettings)
-            while GPIO.input(self.KEY3) == 0:
+            while self._pressed(self.KEY3):
                 time.sleep(0.01)
 
-        if GPIO.input(self.KEYLEFT) == 0:
+        if self._pressed(self.KEYLEFT):
             self.midiports.last_activity = time.time()
             if self.state_manager:
                 self.state_manager.update_user_activity()
             self.menu.change_value("LEFT")
             time.sleep(0.1)
 
-        if GPIO.input(self.KEYRIGHT) == 0:
+        if self._pressed(self.KEYRIGHT):
             self.midiports.last_activity = time.time()
             if self.state_manager:
                 self.state_manager.update_user_activity()
             self.menu.change_value("RIGHT")
             time.sleep(0.1)
 
-        if GPIO.input(self.JPRESS) == 0:
+        if self._pressed(self.JPRESS):
             self.midiports.last_activity = time.time()
             if self.state_manager:
                 self.state_manager.update_user_activity()
             self.menu.speed_change()
-            while GPIO.input(self.JPRESS) == 0:
+            while self._pressed(self.JPRESS):
                 time.sleep(0.01)

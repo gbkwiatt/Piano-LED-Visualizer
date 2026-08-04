@@ -1,7 +1,7 @@
 import time
 from rpi_ws281x import Color
 
-from lib.backlight_effects import brightness_at
+from lib.backlight_effects import backlight_color, brightness_at
 
 
 class LEDEffectsProcessor:
@@ -70,11 +70,8 @@ class LEDEffectsProcessor:
                     led_changed = True
 
             if self.ledstrip.keylist[n] <= 0 and self.menu.screensaver_is_running is not True:
-                backlight_level = (float(self.ledsettings.backlight_brightness_percent) / 100
-                                   * brightness_at(self.ledsettings, n, self.ledstrip.led_number))
-                red = int(self.ledsettings.get_backlight_color("Red")) * backlight_level
-                green = int(self.ledsettings.get_backlight_color("Green")) * backlight_level
-                blue = int(self.ledsettings.get_backlight_color("Blue")) * backlight_level
+                idle = backlight_color(self.ledsettings, n, self.ledstrip.led_number)
+                red, green, blue = (idle >> 16) & 0xFF, (idle >> 8) & 0xFF, idle & 0xFF
                 led_changed = True
 
             if led_changed:

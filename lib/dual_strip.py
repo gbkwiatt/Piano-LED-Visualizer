@@ -36,12 +36,6 @@ class Ws2811Channel:
         if 0 <= n < self.size:
             ws.ws2811_led_set(self._channel, int(n), int(color))
 
-    def setPixelColorRGB(self, n, red, green, blue, white=0):
-        self.setPixelColor(n, (white << 24) | (red << 16) | (green << 8) | blue)
-
-    def getPixelColor(self, n):
-        return ws.ws2811_led_get(self._channel, int(n))
-
     def getPixels(self):
         return [ws.ws2811_led_get(self._channel, i) for i in range(self.size)]
 

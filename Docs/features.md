@@ -10,8 +10,9 @@
     3. [Learning](#learning)
     4. [Learning with Synthesia](#learning_with_synthesia)
     5. [Managing songs](#managing_songs)
-3. [Sequences](#sequences)
-4. [Led animations](#led_animations)
+3. [Second LED strip](#second_strip)
+4. [Sequences](#sequences)
+5. [Led animations](#led_animations)
 
 # Led settings <a name="ledsettings"></a>
 
@@ -79,6 +80,16 @@ There are 3 modes
 - ### Brightness
 - ### Backlight
   It lights up all the keys when they are not pressed.
+- ### Backlight effect
+  Shapes the backlight along the strip instead of leaving it even.
+
+  **Wave** varies the brightness as a sine down the length of the strip. *Dimmest point*
+  is the darkest part of the wave as a percentage of the backlight brightness, and
+  *Waves* is how many full waves fit across the strip. The brightest part of the wave is
+  always the backlight brightness itself, so the effect only ever darkens.
+
+  Played notes always take precedence: a lit key, its fade and its sides colors cover the
+  backlight as usual, and the wave reappears when the key returns to idle.
 - ### Sides colors
   Light up 3 LEDs instead of 1. Adjacent LEDs can be set to a separate color.
 - ### Skipped notes
@@ -218,6 +229,29 @@ cd /home/Piano-LED-Visualizer/
 sudo chmod a+rwxX -R Songs/
 ```
 
+
+# Second LED strip <a name="second_strip"></a>
+
+The Raspberry Pi can drive a second LED strip alongside the first. It is disabled by
+default; turn it on with **Enable second strip** under *LED Settings → LED Strips*, which
+restarts the visualizer.
+
+Once enabled, **LED 1** and **LED 2** tabs appear and switch which strip the LED Settings
+page edits. Almost everything is independent per strip: color mode and colors, light mode
+and its speed, backlight and backlight effect, sides colors, skipped notes, LED note
+offsets, brightness, LED count, LEDs per meter, shift and reverse. So the second strip can
+run a different color mode, at a different length and density, in the opposite direction.
+
+Two things are deliberately shared. **Gamma correction** is a property of the LED
+controller both strips share, so it applies to both. And the LCD screen menu, sequences,
+recording and animations all drive the first strip only.
+
+The second strip responds to notes you play, and nothing else. It stays out of lessons,
+song playback, light animations and the screensaver, so those keep the first strip to
+themselves.
+
+See [Connecting LED Strip to Raspberry Pi](https://github.com/onlaj/Piano-LED-Visualizer#connecting-led-strip-to-raspberry-pi)
+for wiring, which pins are valid, and the conflict with the LCD HAT's buttons.
 
 # Sequences <a name="sequences"></a>
 

@@ -16,6 +16,10 @@ The Piano LED Visualizer is a project that enables you to connect an LED strip t
 
 - Customizable Lights: You can change the colors and brightness of the lights to fit your style.
 
+- Two LED Strips: Drive a second strip from the same Pi, with its own colors, light mode, geometry and backlight, independent of the first.
+
+- Backlight Effects: Shape the idle backlight along the strip, for example a sine wave between a dimmest point and your backlight brightness.
+
 - Record and Play: Record your piano songs, download them or play directly from Visualizer.
 
 - MIDI Files: Load MIDI files to see which keys to play, making it easy to learn new songs.
@@ -126,6 +130,31 @@ The wires of the LED strip are connected like this:
 Double check how your LED strip is wired. Most strips use G-D-V (ground, data, voltage), however in the wiring diagram the voltage and data lines are swapped.
 Connecting voltage directly to your data pin might seriously damage or kill your Raspberry!
 
+### Second LED strip
+
+A second strip is optional and off by default. Enable it under **LED Settings → LED Strips**,
+where the **LED 1 / LED 2** tabs then switch which strip the settings on that page apply to.
+
+Wire it exactly like the first, except the data line goes to a different pin:
+
+- DIN (data) to pin 13 (or 19) on the Pi
+- GRD to GRD on the Pi and the negative of the power supply
+- +5V to the positive of the power supply (not the Pi)
+
+Both strips are driven by one ws2811 controller, which has two PWM channels. Channel 0
+covers pins **12 and 18**, channel 1 covers pins **13 and 19**, and each strip needs a
+different channel. So one strip must use 12 or 18 and the other 13 or 19. The web
+interface only offers the valid pins for the second strip and rejects a clash.
+
+> **The LCD control HAT uses both channel-1 pins.** GPIO 13 is the joystick press and
+> GPIO 19 is a direction key, so enabling a second strip takes one of them over. That
+> button stops working and a warning is logged; everything else on the HAT is unaffected.
+> If you would rather keep all buttons, set `<disable_hat>1</disable_hat>` (see
+> Troubleshooting) and drive the menu from the web interface.
+
+Check your power supply can feed both strips. Two 88-LED strips at full white draw
+considerably more than one, and the Pi cannot supply it.
+
 Optionally, you can connect a switch to BCM pin 12 and GND. Attach the switch to the key cover, if available. When it is closed, the animations are automatically switched off.
 
 If you are wondering how to connect wires to RPI if screen hat is taking all pins here is a [picture](https://i.imgur.com/7KhwM7r.jpg) of how I did it. There should be a gap between RPI and screen so you can solder your wires or just wrap cables around the pins and separate them with heat shrink bands.
@@ -162,8 +191,8 @@ at startup. If you stack another HAT, watch for conflicts on these pins:
 
 | Pin (BCM) | PLV use |
 |-----------|---------|
-| 5, 6, 16, 19, 20, 21, 26 | LCD-HAT joystick / KEY buttons |
-| 13 | joystick press |
+| 5, 6, 16, 19, 20, 21, 26 | LCD-HAT joystick / KEY buttons (19 is also PWM channel 1) |
+| 13 | joystick press (also PWM channel 1 — used by a second LED strip) |
 | 12 | cover sensor |
 | 8, 24, 25, 27 | LCD screen (SPI CE / backlight / DC / reset) |
 

@@ -88,9 +88,6 @@ class VisualizerApp:
                                                          self.last_sustain,
                                                          self.pedal_deadzone)
 
-        # Second strip: its own colour mode, its own fades, and a notes-only MIDI
-        # renderer. It shares the drained MIDI batch with the first strip but stays
-        # out of lessons, animations, sequences and recording.
         self.color_mode2 = None
         self.midi_event_processor2 = None
         self.led_effects_processor2 = None
@@ -194,7 +191,7 @@ class VisualizerApp:
             should_update = fade_processed or midi_processed
 
             if should_update:
-                # One render call drives both channels of the shared controller.
+                # Renders both channels of the shared controller.
                 ledstrip.strip.show()
                 self.update_fps_stats()
             else:
