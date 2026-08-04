@@ -19,7 +19,7 @@ require_trixie() {
   if [ "${VERSION_CODENAME:-}" != "trixie" ]; then
     echo "Error: This script requires Raspberry Pi OS Trixie (got: ${VERSION_CODENAME:-unknown})." >&2
     echo "For Bookworm, use autoinstall_bookworm.sh instead:" >&2
-    echo "  sudo bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/onlaj/Piano-LED-Visualizer/master/autoinstall_bookworm.sh)\"" >&2
+    echo "  sudo bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/gbkwiatt/Piano-LED-Visualizer/master/autoinstall_bookworm.sh)\"" >&2
     exit 1
   fi
 }
