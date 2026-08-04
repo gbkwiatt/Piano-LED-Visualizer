@@ -30,105 +30,105 @@ class LedSettings:
     def _key(self, name):
         return name if self.namespace is None else (self.namespace, name)
 
-    def _get(self, name):
+    def get_setting(self, name):
         return self.usersettings.get_setting_value(self._key(name))
 
-    def _set(self, name, value):
+    def set_setting(self, name, value):
         self.usersettings.change_setting_value(self._key(name), value)
 
     def _load_settings(self):
         """Load all settings from usersettings. Can be called to reload settings without recreating the object."""
 
-        self.red = int(self._get("red"))
-        self.green = int(self._get("green"))
-        self.blue = int(self._get("blue"))
-        self.mode = self._get("mode")
-        self.fadingspeed = int(self._get("fadingspeed"))
-        velocity_speed_val = self._get("velocity_speed")
+        self.red = int(self.get_setting("red"))
+        self.green = int(self.get_setting("green"))
+        self.blue = int(self.get_setting("blue"))
+        self.mode = self.get_setting("mode")
+        self.fadingspeed = int(self.get_setting("fadingspeed"))
+        velocity_speed_val = self.get_setting("velocity_speed")
         self.velocity_speed = int(velocity_speed_val) if velocity_speed_val else 1000
-        pedal_speed_val = self._get("pedal_speed")
+        pedal_speed_val = self.get_setting("pedal_speed")
         self.pedal_speed = int(pedal_speed_val) if pedal_speed_val else 1000
-        self.pulse_animation_speed = int(self._get("pulse_animation_speed"))
-        self.pulse_animation_distance = int(self._get("pulse_animation_distance"))
-        self.pulse_flicker_strength = int(self._get("pulse_flicker_strength"))
-        pulse_flicker_speed_val = self._get("pulse_flicker_speed")
+        self.pulse_animation_speed = int(self.get_setting("pulse_animation_speed"))
+        self.pulse_animation_distance = int(self.get_setting("pulse_animation_distance"))
+        self.pulse_flicker_strength = int(self.get_setting("pulse_flicker_strength"))
+        pulse_flicker_speed_val = self.get_setting("pulse_flicker_speed")
         self.pulse_flicker_speed = float(pulse_flicker_speed_val) if pulse_flicker_speed_val else 30.0
-        self.fadepedal_notedrop = int(self._get("fadepedal_notedrop"))
-        self.color_mode = self._get("color_mode")
-        self.rainbow_offset = int(self._get("rainbow_offset"))
-        self.rainbow_scale = int(self._get("rainbow_scale"))
-        self.rainbow_timeshift = int(self._get("rainbow_timeshift"))
-        self.rainbow_colormap = self._get("rainbow_colormap")
-        self.velocityrainbow_offset = int(self._get("velocityrainbow_offset"))
-        self.velocityrainbow_scale = int(self._get("velocityrainbow_scale"))
-        self.velocityrainbow_curve = int(self._get("velocityrainbow_curve"))
-        self.velocityrainbow_colormap = self._get("velocityrainbow_colormap")
+        self.fadepedal_notedrop = int(self.get_setting("fadepedal_notedrop"))
+        self.color_mode = self.get_setting("color_mode")
+        self.rainbow_offset = int(self.get_setting("rainbow_offset"))
+        self.rainbow_scale = int(self.get_setting("rainbow_scale"))
+        self.rainbow_timeshift = int(self.get_setting("rainbow_timeshift"))
+        self.rainbow_colormap = self.get_setting("rainbow_colormap")
+        self.velocityrainbow_offset = int(self.get_setting("velocityrainbow_offset"))
+        self.velocityrainbow_scale = int(self.get_setting("velocityrainbow_scale"))
+        self.velocityrainbow_curve = int(self.get_setting("velocityrainbow_curve"))
+        self.velocityrainbow_colormap = self.get_setting("velocityrainbow_colormap")
 
-        self.multicolor = ast.literal_eval(self._get("multicolor"))
-        self.multicolor_range = ast.literal_eval(self._get("multicolor_range"))
+        self.multicolor = ast.literal_eval(self.get_setting("multicolor"))
+        self.multicolor_range = ast.literal_eval(self.get_setting("multicolor_range"))
         self.multicolor_index = 0
-        self.multicolor_iteration = ast.literal_eval(self._get("multicolor_iteration"))
+        self.multicolor_iteration = ast.literal_eval(self.get_setting("multicolor_iteration"))
 
-        self.sequence_active = self._get("sequence_active")
+        self.sequence_active = self.get_setting("sequence_active")
 
-        self.backlight_brightness = int(self._get("backlight_brightness"))
-        self.backlight_brightness_percent = int(self._get("backlight_brightness_percent"))
-        self.disable_backlight_on_idle = self._get("disable_backlight_on_idle")
+        self.backlight_brightness = int(self.get_setting("backlight_brightness"))
+        self.backlight_brightness_percent = int(self.get_setting("backlight_brightness_percent"))
+        self.disable_backlight_on_idle = self.get_setting("disable_backlight_on_idle")
         self.backlight_stopped = False
 
-        self.led_animation_brightness_percent = int(self._get("led_animation_brightness_percent"))
+        self.led_animation_brightness_percent = int(self.get_setting("led_animation_brightness_percent"))
         
         # Animation speed settings
-        self.animation_speed_slow = int(self._get("animation_speed_slow") or 50)
-        self.animation_speed_medium = int(self._get("animation_speed_medium") or 20)
-        self.animation_speed_fast = int(self._get("animation_speed_fast") or 5)
-        self.led_animation_speed = self._get("led_animation_speed") or ""
+        self.animation_speed_slow = int(self.get_setting("animation_speed_slow") or 50)
+        self.animation_speed_medium = int(self.get_setting("animation_speed_medium") or 20)
+        self.animation_speed_fast = int(self.get_setting("animation_speed_fast") or 5)
+        self.led_animation_speed = self.get_setting("led_animation_speed") or ""
 
-        self.backlight_red = int(self._get("backlight_red"))
-        self.backlight_green = int(self._get("backlight_green"))
-        self.backlight_blue = int(self._get("backlight_blue"))
+        self.backlight_red = int(self.get_setting("backlight_red"))
+        self.backlight_green = int(self.get_setting("backlight_green"))
+        self.backlight_blue = int(self.get_setting("backlight_blue"))
 
-        self.adjacent_mode = self._get("adjacent_mode")
-        self.adjacent_red = int(self._get("adjacent_red"))
-        self.adjacent_green = int(self._get("adjacent_green"))
-        self.adjacent_blue = int(self._get("adjacent_blue"))
+        self.adjacent_mode = self.get_setting("adjacent_mode")
+        self.adjacent_red = int(self.get_setting("adjacent_red"))
+        self.adjacent_green = int(self.get_setting("adjacent_green"))
+        self.adjacent_blue = int(self.get_setting("adjacent_blue"))
 
-        self.skipped_notes = self._get("skipped_notes")
+        self.skipped_notes = self.get_setting("skipped_notes")
 
-        self.note_offsets = ast.literal_eval(self._get("note_offsets"))
+        self.note_offsets = ast.literal_eval(self.get_setting("note_offsets"))
 
         self.speed_period_in_seconds = 0.8
 
-        self.speed_slowest = {"red": int(self._get("speed_slowest_red")),
-                              "green": int(self._get("speed_slowest_green")),
-                              "blue": int(self._get("speed_slowest_blue"))}
+        self.speed_slowest = {"red": int(self.get_setting("speed_slowest_red")),
+                              "green": int(self.get_setting("speed_slowest_green")),
+                              "blue": int(self.get_setting("speed_slowest_blue"))}
 
-        self.speed_fastest = {"red": int(self._get("speed_fastest_red")),
-                              "green": int(self._get("speed_fastest_green")),
-                              "blue": int(self._get("speed_fastest_blue"))}
+        self.speed_fastest = {"red": int(self.get_setting("speed_fastest_red")),
+                              "green": int(self.get_setting("speed_fastest_green")),
+                              "blue": int(self.get_setting("speed_fastest_blue"))}
 
-        self.speed_period_in_seconds = float(self._get("speed_period_in_seconds"))
-        self.speed_max_notes = int(self._get("speed_max_notes"))
+        self.speed_period_in_seconds = float(self.get_setting("speed_period_in_seconds"))
+        self.speed_max_notes = int(self.get_setting("speed_max_notes"))
 
-        self.gradient_start = {"red": int(self._get("gradient_start_red")),
-                               "green": int(self._get("gradient_start_green")),
-                               "blue": int(self._get("gradient_start_blue"))}
+        self.gradient_start = {"red": int(self.get_setting("gradient_start_red")),
+                               "green": int(self.get_setting("gradient_start_green")),
+                               "blue": int(self.get_setting("gradient_start_blue"))}
 
-        self.gradient_end = {"red": int(self._get("gradient_end_red")),
-                             "green": int(self._get("gradient_end_green")),
-                             "blue": int(self._get("gradient_end_blue"))}
+        self.gradient_end = {"red": int(self.get_setting("gradient_end_red")),
+                             "green": int(self.get_setting("gradient_end_green")),
+                             "blue": int(self.get_setting("gradient_end_blue"))}
 
-        self.key_in_scale = {"red": int(self._get("key_in_scale_red")),
-                             "green": int(self._get("key_in_scale_green")),
-                             "blue": int(self._get("key_in_scale_blue"))}
+        self.key_in_scale = {"red": int(self.get_setting("key_in_scale_red")),
+                             "green": int(self.get_setting("key_in_scale_green")),
+                             "blue": int(self.get_setting("key_in_scale_blue"))}
 
-        self.key_not_in_scale = {"red": int(self._get("key_not_in_scale_red")),
-                                 "green": int(self._get("key_not_in_scale_green")),
-                                 "blue": int(self._get("key_not_in_scale_blue"))}
+        self.key_not_in_scale = {"red": int(self.get_setting("key_not_in_scale_red")),
+                                 "green": int(self.get_setting("key_not_in_scale_green")),
+                                 "blue": int(self.get_setting("key_not_in_scale_blue"))}
 
         self.scales = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B", "C m", "C# m", "D m", "Eb m",
                        "E m", "F m", "F# m", "G m", "G# m", "A bm", "A m", "Bb m", "B m"]
-        self.scale_key = int(self._get("scale_key"))
+        self.scale_key = int(self.get_setting("scale_key"))
 
         self.sequence_number = 0
 
@@ -150,21 +150,21 @@ class LedSettings:
 
     def add_note_offset(self):
         self.note_offsets.insert(0, [100, 1])
-        self._set("note_offsets", self.note_offsets)
+        self.set_setting("note_offsets", self.note_offsets)
 
     def append_note_offset(self):
         self.note_offsets.append([1, 1])
-        self._set("note_offsets", self.note_offsets)
+        self.set_setting("note_offsets", self.note_offsets)
 
     def del_note_offset(self, slot):
         del self.note_offsets[int(slot) - 1]
-        self._set("note_offsets", self.note_offsets)
+        self.set_setting("note_offsets", self.note_offsets)
 
     def update_note_offset(self, slot, data):
         pair = data.split(",")
         self.note_offsets[int(slot) - 1][0] = int(pair[0])
         self.note_offsets[int(slot) - 1][1] = int(pair[1])
-        self._set("note_offsets", self.note_offsets)
+        self.set_setting("note_offsets", self.note_offsets)
 
     def update_note_offset_lcd(self, current_choice, currentlocation, value):
         slot = int(currentlocation.replace('Offset', '')) - 1
@@ -172,14 +172,14 @@ class LedSettings:
             self.note_offsets[slot][0] += value
         else:
             self.note_offsets[slot][1] += value
-        self._set("note_offsets", self.note_offsets)
+        self.set_setting("note_offsets", self.note_offsets)
 
     def addcolor(self):
         self.multicolor.append([0, 255, 0])
         self.multicolor_range.append([20, 108])
 
-        self._set("multicolor", self.multicolor)
-        self._set("multicolor_range", self.multicolor_range)
+        self.set_setting("multicolor", self.multicolor)
+        self.set_setting("multicolor_range", self.multicolor_range)
 
         if self.menu is not None:
             self.menu.update_multicolor(self.multicolor)
@@ -190,8 +190,8 @@ class LedSettings:
         del self.multicolor[int(key) - 1]
         del self.multicolor_range[int(key) - 1]
 
-        self._set("multicolor", self.multicolor)
-        self._set("multicolor_range", self.multicolor_range)
+        self.set_setting("multicolor", self.multicolor)
+        self.set_setting("multicolor_range", self.multicolor_range)
 
         if self.menu is not None:
             self.menu.update_multicolor(self.multicolor)
@@ -212,7 +212,7 @@ class LedSettings:
         self.multicolor[int(location)][choice] += int(value)
         self.multicolor[int(location)][choice] = clamp(self.multicolor[int(location)][choice], 0, 255)
 
-        self._set("multicolor", self.multicolor)
+        self.set_setting("multicolor", self.multicolor)
         self.incoming_setting_change = True
 
     def change_multicolor_range(self, choice, location, value):
@@ -224,7 +224,7 @@ class LedSettings:
             choice = 1
 
         self.multicolor_range[int(location)][choice] += int(value)
-        self._set("multicolor_range", self.multicolor_range)
+        self.set_setting("multicolor_range", self.multicolor_range)
         self.incoming_setting_change = True
 
     def get_multicolors(self, number):
@@ -268,38 +268,38 @@ class LedSettings:
 
     def change_color(self, color, value):
         self.sequence_active = False
-        self._set("sequence_active", self.sequence_active)
+        self.set_setting("sequence_active", self.sequence_active)
         self.color_mode = "Single"
-        self._set("color_mode", self.color_mode)
+        self.set_setting("color_mode", self.color_mode)
         if color == "Red":
             if 255 >= self.red >= 0:
                 self.red += int(value)
                 self.red = clamp(self.red, 0, 255)
-                self._set("red", self.red)
+                self.set_setting("red", self.red)
         elif color == "Green":
             if 255 >= self.green >= 0:
                 self.green += int(value)
                 self.green = clamp(self.green, 0, 255)
-                self._set("green", self.green)
+                self.set_setting("green", self.green)
         elif color == "Blue":
             if 255 >= self.blue >= 0:
                 self.blue += int(value)
                 self.blue = clamp(self.blue, 0, 255)
-                self._set("blue", self.blue)
+                self.set_setting("blue", self.blue)
         self.incoming_setting_change = True
 
     def change_color_name(self, color):
         self.sequence_active = False
-        self._set("sequence_active", self.sequence_active)
+        self.set_setting("sequence_active", self.sequence_active)
         self.color_mode = "Single"
-        self._set("color_mode", self.color_mode)
+        self.set_setting("color_mode", self.color_mode)
         self.red = int(find_between(str(color), "red=", ","))
         self.green = int(find_between(str(color), "green=", ","))
         self.blue = int(find_between(str(color), "blue=", ")"))
 
-        self._set("red", self.red)
-        self._set("green", self.green)
-        self._set("blue", self.blue)
+        self.set_setting("red", self.red)
+        self.set_setting("green", self.green)
+        self.set_setting("blue", self.blue)
 
     def get_color(self, color):
         if color == "Red":
@@ -623,8 +623,8 @@ class LedSettings:
         self.backlight_brightness_percent += value
         self.backlight_brightness_percent = clamp(self.backlight_brightness_percent, 0, 100)
         self.backlight_brightness = 255 * self.backlight_brightness_percent / 100
-        self._set("backlight_brightness", int(self.backlight_brightness))
-        self._set("backlight_brightness_percent", self.backlight_brightness_percent)
+        self.set_setting("backlight_brightness", int(self.backlight_brightness))
+        self.set_setting("backlight_brightness_percent", self.backlight_brightness_percent)
         fastColorWipe(self.ledstrip.strip, True, self)
 
     def change_backlight_color(self, color, value):
@@ -640,15 +640,15 @@ class LedSettings:
             if 255 >= self.backlight_blue >= 0:
                 self.backlight_blue += int(value)
                 self.backlight_blue = clamp(self.backlight_blue, 0, 255)
-        self._set("backlight_red", self.backlight_red)
-        self._set("backlight_green", self.backlight_green)
-        self._set("backlight_blue", self.backlight_blue)
+        self.set_setting("backlight_red", self.backlight_red)
+        self.set_setting("backlight_green", self.backlight_green)
+        self.set_setting("backlight_blue", self.backlight_blue)
 
         fastColorWipe(self.ledstrip.strip, True, self)
 
     def change_adjacent_color(self, color, value):
         self.adjacent_mode = "RGB"
-        self._set("adjacent_mode", self.adjacent_mode)
+        self.set_setting("adjacent_mode", self.adjacent_mode)
         if color == "Red":
             if 255 >= self.adjacent_red >= 0:
                 self.adjacent_red += int(value)
@@ -661,7 +661,7 @@ class LedSettings:
             if 255 >= self.adjacent_blue >= 0:
                 self.adjacent_blue += int(value)
                 self.adjacent_blue = clamp(self.adjacent_blue, 0, 255)
-        self._set("adjacent_red", self.adjacent_red)
-        self._set("adjacent_green", self.adjacent_green)
-        self._set("adjacent_blue", self.adjacent_blue)
+        self.set_setting("adjacent_red", self.adjacent_red)
+        self.set_setting("adjacent_green", self.adjacent_green)
+        self.set_setting("adjacent_blue", self.adjacent_blue)
         fastColorWipe(self.ledstrip.strip, True, self)
