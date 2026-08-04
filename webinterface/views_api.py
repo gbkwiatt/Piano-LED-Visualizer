@@ -2483,6 +2483,7 @@ LED_SETTINGS_ALLOWLIST = {
     'led_animation_brightness_percent',
     # Other LED Settings
     'backlight_red', 'backlight_green', 'backlight_blue',
+    'backlight_effect', 'backlight_effect_min_percent', 'backlight_effect_cycles',
     'adjacent_mode', 'adjacent_red', 'adjacent_green', 'adjacent_blue',
     'led_animation', 'led_animation_delay', 'led_animation_speed',
     'animation_speed_slow', 'animation_speed_medium', 'animation_speed_fast',
@@ -2535,6 +2536,12 @@ def save_preset():
                 # Create a copy of the element
                 new_elem = ET.SubElement(preset_root, elem.tag)
                 new_elem.text = elem.text
+            elif elem.tag == STRIP2:
+                # The second strip keeps the same keys one level down.
+                strip2_elem = ET.SubElement(preset_root, STRIP2)
+                for child in elem:
+                    if child.tag in LED_SETTINGS_ALLOWLIST:
+                        ET.SubElement(strip2_elem, child.tag).text = child.text
                 
         # Write the minimal preset file
         preset_tree = ET.ElementTree(preset_root)
@@ -2577,6 +2584,11 @@ def load_preset():
             if preset_elem.tag in LED_SETTINGS_ALLOWLIST:
                 current_elem = get_or_create(current_root, preset_elem.tag)
                 current_elem.text = preset_elem.text
+            elif preset_elem.tag == STRIP2:
+                current_strip2 = get_or_create(current_root, STRIP2)
+                for child in preset_elem:
+                    if child.tag in LED_SETTINGS_ALLOWLIST:
+                        get_or_create(current_strip2, child.tag).text = child.text
             
         current_tree.write("config/settings.xml")
         
