@@ -2,6 +2,7 @@ import time
 
 from rpi_ws281x import Color
 
+from lib.backlight_effects import scaled_backlight_rgb
 from lib.functions import get_note_position, find_between
 from lib.log_setup import logger
 
@@ -428,17 +429,21 @@ class MIDIEventProcessor:
             pass
 
     def _resolve_idle_color(self):
-        """Compute the color to apply when a key returns to its idle state."""
-        if self.ledsettings.backlight_brightness > 0 and not self.menu.screensaver_is_running:
-            scale = self.ledsettings.backlight_brightness_percent / 100.0
-            return Color(
-                int(self.ledsettings.backlight_red * scale),
-                int(self.ledsettings.backlight_green * scale),
-                int(self.ledsettings.backlight_blue * scale),
-            ), True
-        return OFF_COLOR, False
+        """Whether idle keys return to the backlight, and at what brightness.
+
+        The colour itself is resolved per pixel in _apply_idle_color, because a
+        backlight effect can vary its brightness along the strip.
+        """
+        screensaver = self.menu is not None and self.menu.screensaver_is_running
+        return None, self.ledsettings.backlight_brightness > 0 and not screensaver
 
     def _apply_idle_color(self, note_position, color_value, is_backlight):
         """Apply either the backlight color or switch LEDs off for a key."""
+        if is_backlight:
+            red, green, blue = scaled_backlight_rgb(self.ledsettings, note_position,
+                                                    self.ledstrip.led_number)
+            color_value = Color(red, green, blue)
+        else:
+            color_value = OFF_COLOR
         self.ledstrip.strip.setPixelColor(note_position, color_value)
         self.ledstrip.set_adjacent_colors(note_position, color_value, True if is_backlight else False)

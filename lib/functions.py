@@ -1,4 +1,5 @@
 import threading
+from lib.backlight_effects import scaled_backlight_rgb
 from lib.rpi_drivers import Color
 import lib.colormaps as cmap
 import mido
@@ -617,16 +618,16 @@ def check_if_led_can_be_overwrite(i, ledstrip, ledsettings):
 
 # LED animations
 def fastColorWipe(strip, update, ledsettings):
+    count = strip.numPixels()
     if ledsettings.backlight_stopped:
         color = Color(0, 0, 0)
+        for i in range(count):
+            strip.setPixelColor(i, color)
     else:
-        brightness = ledsettings.backlight_brightness_percent / 100
-        red = int(ledsettings.get_backlight_color("Red") * brightness)
-        green = int(ledsettings.get_backlight_color("Green") * brightness)
-        blue = int(ledsettings.get_backlight_color("Blue") * brightness)
-        color = Color(red, green, blue)
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, color)
+        # Brightness can vary along the strip, so the colour is resolved per pixel.
+        for i in range(count):
+            red, green, blue = scaled_backlight_rgb(ledsettings, i, count)
+            strip.setPixelColor(i, Color(red, green, blue))
     if update:
         strip.show()
 

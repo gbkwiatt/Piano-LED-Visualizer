@@ -262,6 +262,19 @@ function initialize_led_settings() {
             change_setting("reverse", this.value)
         }
 
+        document.getElementById('backlight_effect').onchange = function () {
+            change_setting("backlight_effect", this.value)
+            update_backlight_effect_visibility(this.value);
+        }
+
+        document.getElementById('backlight_effect_min_percent').onchange = function () {
+            change_setting("backlight_effect_min_percent", this.value)
+        }
+
+        document.getElementById('backlight_effect_cycles').onchange = function () {
+            change_setting("backlight_effect_cycles", this.value)
+        }
+
         document.getElementById('sides_color_mode').onchange = function () {
             change_setting("sides_color_mode", this.value)
             document.getElementById('sides_color_choose').hidden = this.value !== "RGB";

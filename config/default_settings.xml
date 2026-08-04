@@ -45,6 +45,14 @@
 	<backlight_green>255</backlight_green>
 	<backlight_blue>255</backlight_blue>
 
+	<!-- Backlight effect: None, or Wave for a sine of brightness along the strip.
+	     min_percent is the dimmest point as a share of the backlight brightness,
+	     which is itself the brightest point. cycles is how many full waves fit
+	     across the strip. -->
+	<backlight_effect>None</backlight_effect>
+	<backlight_effect_min_percent>20</backlight_effect_min_percent>
+	<backlight_effect_cycles>2</backlight_effect_cycles>
+
 	<speed_slowest_red>255</speed_slowest_red>
 	<speed_slowest_green>255</speed_slowest_green>
 	<speed_slowest_blue>255</speed_slowest_blue>
@@ -177,7 +185,10 @@
 		<backlight_brightness_percent>0</backlight_brightness_percent>
 		<backlight_green>255</backlight_green>
 		<backlight_red>255</backlight_red>
-		<blue>255</blue>
+		<backlight_effect>None</backlight_effect>
+		<backlight_effect_cycles>2</backlight_effect_cycles>
+		<backlight_effect_min_percent>20</backlight_effect_min_percent>
+			<blue>255</blue>
 		<color_mode>Single</color_mode>
 		<disable_backlight_on_idle>1</disable_backlight_on_idle>
 		<fadepedal_notedrop>0</fadepedal_notedrop>

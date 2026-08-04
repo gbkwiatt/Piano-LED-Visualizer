@@ -14,7 +14,7 @@ class PixelStrip_Emu():
         pass
 
     def setPixelColor(self, pos, color):
-        if 0 < pos < self.leds:
+        if 0 <= pos < self.leds:
             self.led_state[pos] = color
 
     def getPixels(self):

@@ -22,6 +22,7 @@ from zipfile import ZipFile
 import json
 import ast
 import re
+from lib.backlight_effects import EFFECTS as BACKLIGHT_EFFECTS
 from lib.ledstrip import STRIP2
 from lib.rpi_drivers import GPIO
 from lib.log_setup import logger
@@ -342,6 +343,24 @@ def change_setting():
                                                        int(ledsettings.backlight_brightness))
         set_setting("backlight_brightness_percent",
                                                        ledsettings.backlight_brightness_percent)
+        fastColorWipe(ledstrip.strip, True, ledsettings)
+
+    if setting_name == "backlight_effect":
+        if value not in BACKLIGHT_EFFECTS:
+            return jsonify(success=False,
+                           error="Unknown backlight effect. Valid values: " + ", ".join(BACKLIGHT_EFFECTS))
+        ledsettings.backlight_effect = value
+        set_setting("backlight_effect", value)
+        fastColorWipe(ledstrip.strip, True, ledsettings)
+
+    if setting_name == "backlight_effect_min_percent":
+        ledsettings.backlight_effect_min_percent = clamp(int(value), 0, 100)
+        set_setting("backlight_effect_min_percent", ledsettings.backlight_effect_min_percent)
+        fastColorWipe(ledstrip.strip, True, ledsettings)
+
+    if setting_name == "backlight_effect_cycles":
+        ledsettings.backlight_effect_cycles = clamp(int(value), 1, 20)
+        set_setting("backlight_effect_cycles", ledsettings.backlight_effect_cycles)
         fastColorWipe(ledstrip.strip, True, ledsettings)
 
     if setting_name == "disable_backlight_on_idle":
@@ -1994,6 +2013,10 @@ def get_settings():
     response["backlight_brightness"] = backlight_brightness
     response["backlight_color"] = backlight_color
     response["disable_backlight_on_idle"] = disable_backlight_on_idle
+    response["backlight_effect"] = get("backlight_effect") or "None"
+    response["backlight_effect_min_percent"] = get("backlight_effect_min_percent")
+    response["backlight_effect_cycles"] = get("backlight_effect_cycles")
+    response["backlight_effects"] = BACKLIGHT_EFFECTS
     response["led_gamma"] = app_state.usersettings.get_setting_value("led_gamma")
 
     response["sides_color_mode"] = get("adjacent_mode")

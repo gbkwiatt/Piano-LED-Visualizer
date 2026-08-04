@@ -189,6 +189,7 @@ class VisualizerApp:
                 midi_processed |= self.midi_event_processor2.render_events(events)
                 self.check_color_mode2(ci.ledsettings2)
 
+
             # Only update LEDs if effects changed them or MIDI events occurred
             should_update = fade_processed or midi_processed
 

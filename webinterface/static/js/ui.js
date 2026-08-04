@@ -645,6 +645,14 @@ function set_second_strip_available(enabled) {
     }
 }
 
+// The shape controls are meaningless with no effect selected.
+function update_backlight_effect_visibility(effect) {
+    const options = document.getElementById("backlight_effect_options");
+    if (options) {
+        options.classList.toggle("hidden", effect === "None");
+    }
+}
+
 function apply_strip2_settings_to_form(settings) {
     const enabledEl = document.getElementById("led_strip2_enabled");
     if (!enabledEl) {
@@ -700,6 +708,10 @@ function get_settings(home = true) {
                     document.getElementById("backlight_brightness").value = response["backlight_brightness"];
                     document.getElementById("backlight_brightness_percent").value = response["backlight_brightness"] + "%";
                     document.getElementById("skipped_notes").value = response["skipped_notes"];
+                    document.getElementById("backlight_effect").value = response["backlight_effect"];
+                    document.getElementById("backlight_effect_min_percent").value = response["backlight_effect_min_percent"];
+                    document.getElementById("backlight_effect_cycles").value = response["backlight_effect_cycles"];
+                    update_backlight_effect_visibility(response["backlight_effect"]);
                     document.getElementById("brightness").value = response["brightness"];
                     document.getElementById("brightness_percent").value = response["brightness"] + "%";
                     document.getElementById("led_count").value = response["led_count"];

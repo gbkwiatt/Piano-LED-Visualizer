@@ -88,6 +88,10 @@ class LedSettings:
         self.backlight_green = int(self.get_setting("backlight_green"))
         self.backlight_blue = int(self.get_setting("backlight_blue"))
 
+        self.backlight_effect = self.get_setting("backlight_effect") or "None"
+        self.backlight_effect_min_percent = int(self.get_setting("backlight_effect_min_percent") or 20)
+        self.backlight_effect_cycles = int(self.get_setting("backlight_effect_cycles") or 2)
+
         self.adjacent_mode = self.get_setting("adjacent_mode")
         self.adjacent_red = int(self.get_setting("adjacent_red"))
         self.adjacent_green = int(self.get_setting("adjacent_green"))

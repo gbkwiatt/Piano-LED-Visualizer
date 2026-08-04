@@ -1,6 +1,8 @@
 import time
 from rpi_ws281x import Color
 
+from lib.backlight_effects import brightness_at
+
 
 class LEDEffectsProcessor:
     def __init__(self, ledstrip, ledsettings, menu, color_mode, last_sustain, pedal_deadzone):
@@ -68,7 +70,8 @@ class LEDEffectsProcessor:
                     led_changed = True
 
             if self.ledstrip.keylist[n] <= 0 and self.menu.screensaver_is_running is not True:
-                backlight_level = float(self.ledsettings.backlight_brightness_percent) / 100
+                backlight_level = (float(self.ledsettings.backlight_brightness_percent) / 100
+                                   * brightness_at(self.ledsettings, n, self.ledstrip.led_number))
                 red = int(self.ledsettings.get_backlight_color("Red")) * backlight_level
                 green = int(self.ledsettings.get_backlight_color("Green")) * backlight_level
                 blue = int(self.ledsettings.get_backlight_color("Blue")) * backlight_level
@@ -100,13 +103,11 @@ class LEDEffectsProcessor:
         flicker_strength = self.ledsettings.pulse_flicker_strength / 100.0
         
         # Base background color (backlight) to blend on top of
-        if not self.menu.screensaver_is_running:
-            backlight_level = float(self.ledsettings.backlight_brightness_percent) / 100
-            br = int(self.ledsettings.get_backlight_color("Red")) * backlight_level
-            bg = int(self.ledsettings.get_backlight_color("Green")) * backlight_level
-            bb = int(self.ledsettings.get_backlight_color("Blue")) * backlight_level
-        else:
-            br, bg, bb = 0, 0, 0
+        show_backlight = not self.menu.screensaver_is_running
+        backlight_level = float(self.ledsettings.backlight_brightness_percent) / 100
+        base_red = int(self.ledsettings.get_backlight_color("Red")) * backlight_level
+        base_green = int(self.ledsettings.get_backlight_color("Green")) * backlight_level
+        base_blue = int(self.ledsettings.get_backlight_color("Blue")) * backlight_level
 
         for pulse in self.ledstrip.active_pulses:
             state = pulse.get("state", "attack")
@@ -198,9 +199,10 @@ class LEDEffectsProcessor:
                      leds_to_update[i] = [0, 0, 0]
 
         for i, color in leds_to_update.items():
-            final_r = min(255, int(color[0] + br))
-            final_g = min(255, int(color[1] + bg))
-            final_b = min(255, int(color[2] + bb))
+            shade = brightness_at(self.ledsettings, i, self.ledstrip.led_number) if show_backlight else 0
+            final_r = min(255, int(color[0] + base_red * shade))
+            final_g = min(255, int(color[1] + base_green * shade))
+            final_b = min(255, int(color[2] + base_blue * shade))
             
             self.ledstrip.strip.setPixelColor(i, Color(final_r, final_g, final_b))
             self.ledstrip.set_adjacent_colors(i, Color(final_r, final_g, final_b), False)

@@ -228,6 +228,44 @@
                                 oninput="this.nextElementSibling.value = this.value+'%' ">
                             <output id="backlight_brightness_percent" class="flex justify-center text-sm">50%</output>
                         </div>
+                        <div>
+                            <label for="backlight_effect"
+                                class="block text-xs font-semibold mb-2 text-gray-600 dark:text-gray-400"
+                                data-translate="backlight_effect">Backlight Effect</label>
+                            <div class="relative">
+                                <select id="backlight_effect" class="h-10 block appearance-none w-full glass-light
+                                    py-2 px-2 pr-8 rounded-glass leading-tight transition-smooth-fast">
+                                    <option value="None" data-translate="none">None</option>
+                                    <option value="Wave" data-translate="backlight_effect_wave">Wave</option>
+                                </select>
+                                <div
+                                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-200">
+                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 20 20">
+                                        <path
+                                            d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="backlight_effect_options" class="grid grid-cols-2 gap-3 hidden">
+                            <div>
+                                <label for="backlight_effect_min_percent"
+                                    class="block text-xs font-semibold mb-2 text-gray-600 dark:text-gray-400"
+                                    data-translate="backlight_effect_min">Dimmest point</label>
+                                <input id="backlight_effect_min_percent" type="number" value="20" min="0" max="100"
+                                    title="Percentage of the backlight brightness at the darkest part of the wave"
+                                    class="h-10 block appearance-none w-full glass-light text-center rounded-glass leading-tight transition-smooth-fast">
+                            </div>
+                            <div>
+                                <label for="backlight_effect_cycles"
+                                    class="block text-xs font-semibold mb-2 text-gray-600 dark:text-gray-400"
+                                    data-translate="backlight_effect_cycles">Waves</label>
+                                <input id="backlight_effect_cycles" type="number" value="2" min="1" max="20"
+                                    title="How many full waves fit across the strip"
+                                    class="h-10 block appearance-none w-full glass-light text-center rounded-glass leading-tight transition-smooth-fast">
+                            </div>
+                        </div>
                         <div class="flex items-center">
                             <input onclick="change_setting('disable_backlight_on_idle', this.checked)"
                                 id="disable_backlight" type="checkbox" value=""
