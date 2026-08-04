@@ -149,7 +149,7 @@ install_rtpmidi_server() {
 # Function to install Piano-LED-Visualizer
 install_piano_led_visualizer() {
   execute_command "cd /home"
-  execute_command "sudo git clone https://github.com/onlaj/Piano-LED-Visualizer" "check_internet"
+  execute_command "sudo git clone https://github.com/gbkwiatt/Piano-LED-Visualizer" "check_internet"
   execute_command "sudo chown -R $USER:$USER /home/Piano-LED-Visualizer"
   execute_command "cd /home/Piano-LED-Visualizer && python3 -m venv .venv"
   execute_command "cd /home/Piano-LED-Visualizer && .venv/bin/pip install --upgrade pip" "check_internet"
