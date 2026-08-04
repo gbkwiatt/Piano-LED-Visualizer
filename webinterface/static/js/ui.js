@@ -595,6 +595,92 @@ function changeHotspotPassword() {
         });
 }
 
+// The Brightness and Adjustments panels edit whichever strip is selected here.
+// Colors, light mode, backlight, gamma and note offsets stay shared.
+let active_led_strip = 1;
+
+const STRIP_SETTING_NAMES = {
+    brightness: ["brightness", "brightness2"],
+    led_count: ["led_count", "led_count2"],
+    leds_per_meter: ["leds_per_meter", "leds_per_meter2"],
+    shift: ["shift", "shift2"],
+    reverse: ["reverse", "reverse2"]
+};
+
+const STRIP_RESPONSE_KEYS = {
+    brightness: ["brightness", "brightness2"],
+    led_count: ["led_count", "led_count2"],
+    leds_per_meter: ["leds_per_meter", "leds_per_meter2"],
+    shift: ["led_shift", "led_shift2"],
+    reverse: ["led_reverse", "led_reverse2"]
+};
+
+function strip_setting_name(field) {
+    return STRIP_SETTING_NAMES[field][active_led_strip - 1];
+}
+
+function apply_strip_settings_to_form(settings) {
+    if (!settings || !document.getElementById("led_count")) {
+        return;
+    }
+    const value = field => settings[STRIP_RESPONSE_KEYS[field][active_led_strip - 1]];
+
+    document.getElementById("brightness").value = value("brightness");
+    document.getElementById("brightness_percent").value = value("brightness") + "%";
+    document.getElementById("led_count").value = value("led_count");
+    document.getElementById("leds_per_meter").value = value("leds_per_meter");
+    document.getElementById("shift").value = value("shift");
+    document.getElementById("reverse").value = value("reverse");
+}
+
+function set_active_led_strip(strip) {
+    active_led_strip = strip;
+
+    document.querySelectorAll(".strip-tab").forEach(tab => {
+        const selected = Number(tab.dataset.strip) === strip;
+        tab.classList.toggle("glass", selected);
+        tab.classList.toggle("shadow-glass", selected);
+        tab.classList.toggle("opacity-50", !selected);
+    });
+    document.querySelectorAll(".strip-badge").forEach(badge => {
+        badge.textContent = "LED " + strip;
+    });
+
+    const strip2Controls = document.getElementById("led_strip2_controls");
+    if (strip2Controls) {
+        strip2Controls.hidden = strip !== 2;
+    }
+
+    apply_strip_settings_to_form(config_settings);
+}
+
+function apply_strip2_settings_to_form(settings) {
+    const enabledEl = document.getElementById("led_strip2_enabled");
+    if (!enabledEl) {
+        return;
+    }
+    enabledEl.checked = settings["led_strip2_enabled"] === "1";
+
+    // Both strips share one ws2811 controller, so the second one can only use the
+    // PWM channel the first is not on. The server decides which pins those are.
+    const pinEl = document.getElementById("led_pin2");
+    pinEl.innerHTML = "";
+    (settings["led_pin2_options"] || []).forEach(pin => {
+        const option = document.createElement("option");
+        option.value = pin;
+        option.textContent = pin;
+        pinEl.appendChild(option);
+    });
+    pinEl.value = settings["led_pin2"];
+    pinEl.setAttribute("data-current-value", settings["led_pin2"]);
+
+    // The strip can be enabled in settings yet fail to come up, e.g. on a pin clash.
+    const statusEl = document.getElementById("led_strip2_status");
+    const failed = enabledEl.checked && settings["led_strip2_active"] === false;
+    statusEl.textContent = failed ? translate('second_strip_not_active') : "";
+    statusEl.hidden = !failed;
+}
+
 function get_settings(home = true) {
     const xhttp = new XMLHttpRequest();
     xhttp.timeout = 5000;
@@ -618,8 +704,6 @@ function get_settings(home = true) {
                         document.getElementById('sides_color_choose').hidden = true;
                     }
 
-                    document.getElementById("brightness").value = response["brightness"];
-                    document.getElementById("brightness_percent").value = response["brightness"] + "%";
                     document.getElementById("gamma_correction").value = response["led_gamma"];
                     document.getElementById("backlight_brightness").value = response["backlight_brightness"];
                     document.getElementById("backlight_brightness_percent").value = response["backlight_brightness"] + "%";
@@ -627,10 +711,8 @@ function get_settings(home = true) {
                         document.getElementById("disable_backlight").checked = true;
                     }
                     document.getElementById("skipped_notes").value = response["skipped_notes"];
-                    document.getElementById("led_count").value = response["led_count"];
-                    document.getElementById("leds_per_meter").value = response["leds_per_meter"];
-                    document.getElementById("shift").value = response["led_shift"];
-                    document.getElementById("reverse").value = response["led_reverse"];
+                    apply_strip2_settings_to_form(response);
+                    set_active_led_strip(active_led_strip);
                     document.getElementById("sides_color").dispatchEvent(new Event('input'));
                     document.getElementById("backlight_color").dispatchEvent(new Event('input'));
                 }

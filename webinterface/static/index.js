@@ -266,6 +266,60 @@ function handleLedPinChange(value, selectElement) {
     });
 }
 
+// Enabling, disabling or repinning the second strip rebuilds the ws2811 controller,
+// which is only safe while the render loop is down.
+function requestVisualizerRestart(setting_name, value, confirmMessage, onCancel) {
+    showConfirm(confirmMessage, function () {
+        const xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+            if (this.readyState !== 4) {
+                return;
+            }
+            let response = {};
+            try {
+                response = JSON.parse(this.responseText);
+            } catch {
+            }
+            if (this.status === 200 && response.success === true) {
+                showAlert(translate('visualizer_restarting'), 'info');
+                setTimeout(function () {
+                    window.location.reload();
+                }, 30000);
+            } else {
+                onCancel();
+                showAlert(response.error || translate('visualizer_restart_error'), 'error');
+            }
+        };
+        xhttp.open("GET", "/api/change_setting?setting_name=" + encodeURIComponent(setting_name)
+            + "&value=" + encodeURIComponent(value), true);
+        xhttp.send();
+    }, onCancel);
+}
+
+function handleStrip2EnabledChange(checkboxElement) {
+    const enabled = checkboxElement.checked;
+    requestVisualizerRestart(
+        "led_strip2_enabled",
+        enabled ? "1" : "0",
+        translate(enabled ? 'enable_second_strip_confirm' : 'disable_second_strip_confirm'),
+        function () {
+            checkboxElement.checked = !enabled;
+        }
+    );
+}
+
+function handleLedPin2Change(value, selectElement) {
+    const previous = selectElement.getAttribute('data-current-value') || '13';
+    requestVisualizerRestart(
+        "led_pin2",
+        value,
+        translate('led_pin_change_confirm').replace('{0}', value),
+        function () {
+            selectElement.value = previous;
+        }
+    );
+}
+
 function change_setting(setting_name, value, second_value = false, disable_sequence = false) {
     const xhttp = new XMLHttpRequest();
     try {
@@ -275,6 +329,13 @@ function change_setting(setting_name, value, second_value = false, disable_seque
     xhttp.onreadystatechange = function () {
         if (this.readyState === 4 && this.status === 200) {
             response = JSON.parse(this.responseText);
+            if (response.restart_required === true) {
+                showAlert(translate('visualizer_restarting'), 'info');
+                setTimeout(function () {
+                    window.location.reload();
+                }, 30000);
+                return;
+            }
             if (response.reload === true) {
                 get_settings();
                 get_current_sequence_setting();

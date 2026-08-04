@@ -154,6 +154,14 @@
 	<led_pin>18</led_pin>
 	<led_channel>0</led_channel>
 
+	<led_strip2_enabled>0</led_strip2_enabled>
+	<led_pin2>13</led_pin2>
+	<brightness_percent2>50</brightness_percent2>
+	<led_count2>176</led_count2>
+	<leds_per_meter2>144</leds_per_meter2>
+	<shift2>0</shift2>
+	<reverse2>0</reverse2>
+
     <hotspot_password>visualizer</hotspot_password>
 
     <web_listen_ip></web_listen_ip>

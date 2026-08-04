@@ -100,7 +100,7 @@ Flash Raspberry Pi OS Lite, enable SSH (Imager OS customisation), boot, SSH in, 
 **Trixie** (recommended):
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/onlaj/Piano-LED-Visualizer/master/autoinstall.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/gbkwiatt/Piano-LED-Visualizer/master/autoinstall.sh)"
 ```
 
 **Bookworm** (legacy):

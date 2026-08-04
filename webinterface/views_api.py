@@ -27,6 +27,22 @@ from lib.log_setup import logger
 from flask import abort
 
 SENSECOVER = 12
+
+# Either strip can use any of these pins. What constrains them is that the two
+# strips share one ws2811 controller and so must sit on different PWM channels;
+# the grouping below is what that check compares. Only 12/18 and 13/19 are on the
+# 40-pin header, the rest are Compute Module pins that led_pin has always accepted.
+PWM_CHANNEL_0_PINS = ['12', '18']
+PWM_CHANNEL_1_PINS = ['13', '19', '41', '45', '53']
+VALID_LED_PINS = PWM_CHANNEL_0_PINS + PWM_CHANNEL_1_PINS
+# The subset the web UI offers, matching the LED Pin dropdown on the home page.
+HEADER_LED_PINS = ['12', '13', '18', '19']
+
+
+def second_strip_pins(first_strip_pin):
+    """Pins the second strip may use, given where the first one sits."""
+    return PWM_CHANNEL_1_PINS if str(first_strip_pin) in PWM_CHANNEL_0_PINS else PWM_CHANNEL_0_PINS
+
 if not HAT_DISABLED:
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(SENSECOVER, GPIO.IN, GPIO.PUD_UP)
@@ -390,20 +406,69 @@ def change_setting():
         return jsonify(success=True, reload=True)
 
     if setting_name == "led_count":
+        # Resizing the strip rebuilds the driver. With a second strip attached that
+        # tears down the shared controller underneath the running render loop, so
+        # persist the value and let a restart apply it instead.
+        if app_state.ledstrip.strip2_enabled:
+            app_state.usersettings.change_setting_value("led_count", max(1, int(value)))
+            app_state.usersettings.save_changes()
+            app_state.platform.restart_visualizer()
+            return jsonify(success=True, restart_required=True,
+                           message="LED count changed. Restarting visualizer...")
         app_state.usersettings.change_setting_value("led_count", int(value))
         app_state.ledstrip.change_led_count(int(value), True)
 
     if setting_name == "leds_per_meter":
-        app_state.usersettings.change_setting_value("leds_per_meter", int(value))
-        app_state.ledstrip.leds_per_meter = int(value)
+        app_state.ledstrip.change_leds_per_meter(int(value))
 
     if setting_name == "shift":
-        app_state.usersettings.change_setting_value("shift", int(value))
         app_state.ledstrip.change_shift(int(value), True)
 
     if setting_name == "reverse":
-        app_state.usersettings.change_setting_value("reverse", int(value))
         app_state.ledstrip.change_reverse(int(value), True)
+
+    if setting_name == "led_strip2_enabled":
+        enabled = 1 if value in ("1", "true", "True", True) else 0
+        app_state.usersettings.change_setting_value("led_strip2_enabled", enabled)
+        app_state.usersettings.save_changes()
+        app_state.platform.restart_visualizer()
+        return jsonify(success=True, restart_required=True,
+                       message="Second LED strip toggled. Restarting visualizer...")
+
+    if setting_name == "led_pin2":
+        pin_value = str(value)
+        pin1 = str(app_state.usersettings.get_setting_value("led_pin"))
+        allowed = second_strip_pins(pin1)
+        if pin_value not in allowed:
+            return jsonify(success=False,
+                           error=f"The first strip is on pin {pin1}, so the second one has to use the "
+                                 f"other PWM channel: {', '.join(allowed)}.")
+
+        app_state.usersettings.change_setting_value("led_pin2", pin_value)
+        app_state.usersettings.save_changes()
+        app_state.platform.restart_visualizer()
+        return jsonify(success=True, restart_required=True,
+                       message="Second LED strip pin changed. Restarting visualizer...")
+
+    if setting_name == "brightness2":
+        app_state.ledstrip.change_brightness2(int(value))
+
+    if setting_name == "led_count2":
+        app_state.ledstrip.change_led_count2(int(value))
+        app_state.usersettings.save_changes()
+        if app_state.ledstrip.strip2_enabled:
+            app_state.platform.restart_visualizer()
+            return jsonify(success=True, restart_required=True,
+                           message="Second LED strip length changed. Restarting visualizer...")
+
+    if setting_name == "leds_per_meter2":
+        app_state.ledstrip.change_leds_per_meter2(int(value))
+
+    if setting_name == "shift2":
+        app_state.ledstrip.change_shift2(int(value))
+
+    if setting_name == "reverse2":
+        app_state.ledstrip.change_reverse2(int(value))
 
     if setting_name == "color_mode":
         reload_sequence = True
@@ -1089,26 +1154,23 @@ def change_setting():
 
     if setting_name == "led_pin":
         # Validate the pin value
-        valid_pins = ['12', '13', '18', '19', '41', '45', '53']
         pin_value = str(value)
-        if pin_value not in valid_pins:
-            return jsonify(success=False, error="Invalid LED pin. Valid pins are: " + ", ".join(valid_pins))
-        
-        # Auto-determine channel based on pin
-        # Channel 0: pins 12, 18
-        # Channel 1: pins 13, 19, 41, 45, 53
-        pin_int = int(pin_value)
-        if pin_int in [12, 18]:
-            channel_value = 0
-        elif pin_int in [13, 19, 41, 45, 53]:
-            channel_value = 1
-        else:
-            return jsonify(success=False, error="Invalid LED pin")
-        
+        if pin_value not in VALID_LED_PINS:
+            return jsonify(success=False, error="Invalid LED pin. Valid pins are: " + ", ".join(VALID_LED_PINS))
+
+        channel_value = 0 if pin_value in PWM_CHANNEL_0_PINS else 1
+
+        if app_state.ledstrip.strip2_enabled:
+            pin2 = str(app_state.usersettings.get_setting_value("led_pin2"))
+            if pin2 not in second_strip_pins(pin_value):
+                return jsonify(success=False,
+                               error=f"Pin {pin_value} shares a PWM channel with the second LED strip "
+                                     f"on pin {pin2}. Move the second strip first.")
+
         # Save both pin and channel settings
         app_state.usersettings.change_setting_value("led_pin", pin_value)
         app_state.usersettings.change_setting_value("led_channel", channel_value)
-        
+
         # Restart visualizer to apply the LED pin change
         app_state.platform.restart_visualizer()
         return jsonify(success=True, restart_required=True, message="LED pin changed. Restarting visualizer...")
@@ -1943,6 +2005,21 @@ def get_settings():
     response["leds_per_meter"] = app_state.usersettings.get_setting_value("leds_per_meter")
     response["led_shift"] = app_state.usersettings.get_setting_value("shift")
     response["led_reverse"] = app_state.usersettings.get_setting_value("reverse")
+    led_pin = app_state.usersettings.get_setting_value("led_pin") or "18"
+    led_pin2 = app_state.usersettings.get_setting_value("led_pin2") or "13"
+    allowed_pins2 = second_strip_pins(led_pin)
+    # Offer the header pins, plus whatever is configured so the dropdown can show it.
+    pin2_options = [p for p in allowed_pins2 if p in HEADER_LED_PINS or p == led_pin2]
+
+    response["led_strip2_enabled"] = app_state.usersettings.get_setting_value("led_strip2_enabled") or "0"
+    response["led_pin2"] = led_pin2
+    response["led_pin2_options"] = pin2_options
+    response["brightness2"] = app_state.usersettings.get_setting_value("brightness_percent2")
+    response["led_count2"] = app_state.usersettings.get_setting_value("led_count2")
+    response["leds_per_meter2"] = app_state.usersettings.get_setting_value("leds_per_meter2")
+    response["led_shift2"] = app_state.usersettings.get_setting_value("shift2")
+    response["led_reverse2"] = app_state.usersettings.get_setting_value("reverse2")
+    response["led_strip2_active"] = app_state.ledstrip.strip_secondary is not None
 
     response["color_mode"] = app_state.usersettings.get_setting_value("color_mode")
 

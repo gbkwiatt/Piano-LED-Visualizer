@@ -2,7 +2,17 @@ from lib.functions import *
 import lib.colormaps as cmap
 from lib.rpi_drivers import PixelStrip, ws
 from lib.LED_drivers import PixelStrip_Emu
+from lib.dual_strip import (DualChannelController, MirroredStrip, build_index_map,
+                            channel_for_pin)
 from lib.log_setup import logger
+
+
+def _setting_int(usersettings, name, default):
+    try:
+        return int(usersettings.get_setting_value(name))
+    except (ValueError, TypeError):
+        return default
+
 
 class LedStrip:
     def __init__(self, usersettings, ledsettings, driver="rpi_ws281x"):
@@ -19,6 +29,21 @@ class LedStrip:
         self.brightness = 255 * self.brightness_percent / 100
         self.led_gamma = float(usersettings.get_setting_value("led_gamma"))
 
+        # Second strip. Geometry is independent; gamma is not, because
+        # ws2811_set_custom_gamma_factor applies to the whole controller.
+        self.strip2_enabled = bool(_setting_int(usersettings, "led_strip2_enabled", 0))
+        self.brightness_percent2 = _setting_int(usersettings, "brightness_percent2", 50)
+        self.led_number2 = max(1, _setting_int(usersettings, "led_count2", 176))
+        self.leds_per_meter2 = max(1, _setting_int(usersettings, "leds_per_meter2", 144))
+        self.shift2 = _setting_int(usersettings, "shift2", 0)
+        self.reverse2 = _setting_int(usersettings, "reverse2", 0)
+        self.brightness2 = 255 * self.brightness_percent2 / 100
+        self.LED_PIN2 = _setting_int(usersettings, "led_pin2", 13)
+
+        self.controller = None
+        self.strip_primary = None
+        self.strip_secondary = None
+
         # Hold individual led state information, initialized in init_strip()
         self.keylist = None
         self.keylist_status = None
@@ -29,19 +54,13 @@ class LedStrip:
         # LED strip configuration:
         #self.LED_COUNT = int(self.led_number)  # Number of LED pixels.
         # Read LED pin and channel from settings, with fallback to defaults
-        try:
-            self.LED_PIN = int(self.usersettings.get_setting_value("led_pin"))
-        except (ValueError, TypeError):
-            self.LED_PIN = 18  # Default GPIO pin (18 uses PWM!)
+        self.LED_PIN = _setting_int(self.usersettings, "led_pin", 18)  # 18 uses PWM!
         # LED_PIN        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
         self.LED_FREQ_HZ = 800000  # LED signal frequency in hertz (usually 800khz)
         self.LED_DMA = 10  # DMA channel to use for generating signal (try 10)
         #self.LED_BRIGHTNESS = int(self.brightness)  # Set to 0 for darkest and 255 for brightest
         self.LED_INVERT = False  # True to invert the signal (when using NPN transistor level shift)
-        try:
-            self.LED_CHANNEL = int(self.usersettings.get_setting_value("led_channel"))
-        except (ValueError, TypeError):
-            self.LED_CHANNEL = 0  # Default channel (set to '1' for GPIOs 13, 19, 41, 45 or 53)
+        self.LED_CHANNEL = _setting_int(self.usersettings, "led_channel", 0)  # '1' for GPIO 13/19/41/45/53
 
         self.WEBEMU_FPS = 10
 
@@ -55,8 +74,12 @@ class LedStrip:
         self.keylist_external_software = [0] * self.led_number  # Track LEDs lit by external software (channels 11/12)
         self.active_pulses = [] # For Pulse mode
 
+        self._release_controller()
+        self.strip_secondary = None
 
         if self.driver == "rpi_ws281x":
+            if self.strip2_enabled and self._init_dual_ws281x():
+                return
             try:
                 # Create NeoPixel object with appropriate configuration.
                 self.strip = PixelStrip(int(self.led_number), self.LED_PIN, self.LED_FREQ_HZ, self.LED_DMA, self.LED_INVERT,
@@ -65,6 +88,7 @@ class LedStrip:
                 self.strip.begin()
                 if "releaseGIL" in dir(self.strip):
                     self.strip.releaseGIL()
+                self.strip_primary = self.strip
                 self.change_gamma(self.led_gamma)
             except Exception as e:
                 logger.warning(e)
@@ -78,17 +102,92 @@ class LedStrip:
 
                 logger.info("Failed to load LED strip.  Using emu driver.")
                 self.strip = PixelStrip_Emu(int(self.led_number))
+                self.strip_primary = self.strip
                 self.driver = "emu"
+                if self.strip2_enabled:
+                    self._attach_emu_secondary()
         elif self.driver == "emu":
             self.strip = PixelStrip_Emu(int(self.led_number))
+            self.strip_primary = self.strip
+            if self.strip2_enabled:
+                self._attach_emu_secondary()
 
+    def _init_dual_ws281x(self):
+        """Bring both strips up on one controller. Returns False to fall back to a single strip."""
+        primary_channel = channel_for_pin(self.LED_PIN)
+        secondary_channel = channel_for_pin(self.LED_PIN2)
+
+        if primary_channel is None or secondary_channel is None:
+            logger.warning(f"Second LED strip disabled: pin {self.LED_PIN} or {self.LED_PIN2} "
+                           "is not a supported PWM pin.")
+            return False
+        if primary_channel == secondary_channel:
+            logger.warning(f"Second LED strip disabled: pins {self.LED_PIN} and {self.LED_PIN2} "
+                           "share PWM channel " + str(primary_channel) +
+                           ". Use one pin from 12/18 and one from 13/19.")
+            return False
+
+        specs = {
+            primary_channel: (int(self.led_number), self.LED_PIN, int(self.brightness)),
+            secondary_channel: (int(self.led_number2), self.LED_PIN2, int(self.brightness2)),
+        }
+        controller = None
+        try:
+            controller = DualChannelController(specs, self.LED_FREQ_HZ, self.LED_DMA,
+                                               self.LED_INVERT, ws.WS2811_STRIP_GRB)
+            controller.begin()
+        except Exception as e:
+            logger.warning(f"Failed to start dual LED strip: {e}")
+            if controller is not None:
+                controller.cleanup()
+            return False
+
+        self.controller = controller
+        self.strip_primary = controller.channels[primary_channel]
+        self.strip_secondary = controller.channels[secondary_channel]
+        self.strip = MirroredStrip(self.strip_primary, self.strip_secondary,
+                                   self._build_index_map())
+        self.change_gamma(self.led_gamma)
+        logger.info(f"Second LED strip active on pin {self.LED_PIN2} "
+                    f"({self.led_number2} LEDs, PWM channel {secondary_channel}).")
+        return True
+
+    def _attach_emu_secondary(self):
+        self.strip_secondary = PixelStrip_Emu(int(self.led_number2))
+        self.strip = MirroredStrip(self.strip_primary, self.strip_secondary,
+                                   self._build_index_map())
+
+    def _build_index_map(self):
+        return build_index_map(int(self.led_number), self.leds_per_meter / 72,
+                               self.shift, self.reverse,
+                               int(self.led_number2), self.leds_per_meter2 / 72,
+                               self.shift2, self.reverse2)
+
+    def _refresh_index_map(self):
+        """Re-project strip 1 onto strip 2 after either strip's geometry changed."""
+        if isinstance(self.strip, MirroredStrip):
+            self.strip.set_index_map(self._build_index_map())
+
+    def _release_controller(self):
+        if self.controller is not None:
+            self.controller.cleanup()
+            self.controller = None
+
+    def cleanup(self):
+        """Free the ws2811 hardware. Call before replacing this LedStrip with a new one,
+        otherwise the next controller cannot claim the DMA channel."""
+        self._release_controller()
+        self.strip_secondary = None
 
     def change_gamma(self, value):
         self.led_gamma = float(value)
         if 0.01 <= self.led_gamma <= 10.0:
             if self.driver == "rpi_ws281x":
                 # rpi_ws281x.py interface has no ported method to set gamma by factor, using direct ws
-                ws.ws2811_set_custom_gamma_factor(self.strip._leds, self.led_gamma)
+                if self.controller is not None:
+                    self.controller.set_gamma_factor(self.led_gamma)
+                else:
+                    ws.ws2811_set_custom_gamma_factor(self.strip._leds, self.led_gamma)
 
             # Rebuild colormaps
             cmap.generate_colormaps(cmap.gradients, self.led_gamma)
@@ -122,6 +221,7 @@ class LedStrip:
         else:
             self.shift += value
         self.usersettings.change_setting_value("shift", self.shift)
+        self._refresh_index_map()
 
     def change_reverse(self, value, fixed_number=False):
         if fixed_number:
@@ -130,6 +230,41 @@ class LedStrip:
             self.reverse += value
         self.reverse = clamp(self.reverse, 0, 1)
         self.usersettings.change_setting_value("reverse", self.reverse)
+        self._refresh_index_map()
+
+    def change_leds_per_meter(self, value):
+        self.leds_per_meter = max(1, int(value))
+        self.usersettings.change_setting_value("leds_per_meter", self.leds_per_meter)
+        self._refresh_index_map()
+
+    def change_brightness2(self, value):
+        self.brightness_percent2 = clamp(int(value), 1, 100)
+        self.brightness2 = 255 * self.brightness_percent2 / 100
+        self.usersettings.change_setting_value("brightness_percent2", self.brightness_percent2)
+        if self.strip_secondary is not None:
+            self.strip_secondary.setBrightness(int(self.brightness2))
+
+    def change_led_count2(self, value):
+        """Persist only. The channel's pixel buffer is sized when the controller is
+        built, and tearing that down while the render loop is running is not safe,
+        so the caller restarts the visualizer to apply it."""
+        self.led_number2 = max(1, int(value))
+        self.usersettings.change_setting_value("led_count2", self.led_number2)
+
+    def change_leds_per_meter2(self, value):
+        self.leds_per_meter2 = max(1, int(value))
+        self.usersettings.change_setting_value("leds_per_meter2", self.leds_per_meter2)
+        self._refresh_index_map()
+
+    def change_shift2(self, value):
+        self.shift2 = int(value)
+        self.usersettings.change_setting_value("shift2", self.shift2)
+        self._refresh_index_map()
+
+    def change_reverse2(self, value):
+        self.reverse2 = clamp(int(value), 0, 1)
+        self.usersettings.change_setting_value("reverse2", self.reverse2)
+        self._refresh_index_map()
 
     def set_adjacent_colors(self, note, color, led_turn_off, fading=1):
         if self.ledsettings.adjacent_mode == "RGB" and color != 0 and led_turn_off is not True:
