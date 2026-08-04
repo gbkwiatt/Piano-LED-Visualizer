@@ -2488,7 +2488,10 @@ LED_SETTINGS_ALLOWLIST = {
     'led_animation', 'led_animation_delay', 'led_animation_speed',
     'animation_speed_slow', 'animation_speed_medium', 'animation_speed_fast',
     'led_gamma',
-    'sequence_active'
+    'sequence_active',
+    # Whether the second strip runs at all. Applying a change needs a restart,
+    # which load_preset triggers.
+    'led_strip2_enabled'
 }
 
 @webinterface.route('/api/presets', methods=['GET'])
@@ -2570,6 +2573,7 @@ def load_preset():
         # Load current settings
         current_tree = ET.parse("config/settings.xml")
         current_root = current_tree.getroot()
+        strip2_was_enabled = current_root.findtext("led_strip2_enabled")
         
         # Helper to find or create element in current root
         def get_or_create(root, tag):
@@ -2591,7 +2595,14 @@ def load_preset():
                         get_or_create(current_strip2, child.tag).text = child.text
             
         current_tree.write("config/settings.xml")
-        
+
+        # Turning the second strip on or off rebuilds the shared ws2811 controller,
+        # which is only safe with the render loop down.
+        if current_root.findtext("led_strip2_enabled") != strip2_was_enabled:
+            app_state.platform.restart_visualizer()
+            return jsonify(success=True, restart_required=True,
+                           message="Preset changed the second LED strip. Restarting visualizer...")
+
         # Reload application state
         reload_app_state()
         

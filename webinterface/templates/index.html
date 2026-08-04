@@ -927,6 +927,11 @@
                 timeout: 60000, // 60 second timeout
                 success: function (response) {
                     if (response.success) {
+                        if (response.restart_required) {
+                            showAlert(translate('visualizer_restarting'), 'info');
+                            setTimeout(function () { window.location.reload(); }, 30000);
+                            return;
+                        }
                         // Refresh settings without full page reload
                         if (typeof get_settings === 'function') {
                             get_settings(false); // Update homepage display
