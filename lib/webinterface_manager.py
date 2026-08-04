@@ -10,11 +10,14 @@ from webinterface import webinterface, app_state
 
 
 class WebInterfaceManager:
-    def __init__(self, args, usersettings, ledsettings, ledstrip, learning, saving, midiports, menu, hotspot, platform, state_manager=None):
+    def __init__(self, args, usersettings, ledsettings, ledstrip, learning, saving, midiports, menu, hotspot, platform,
+                 state_manager=None, ledsettings2=None, ledstrip2=None):
         self.args = args
         self.usersettings = usersettings
         self.ledsettings = ledsettings
         self.ledstrip = ledstrip
+        self.ledsettings2 = ledsettings2
+        self.ledstrip2 = ledstrip2
         self.learning = learning
         self.saving = saving
         self.midiports = midiports
@@ -32,6 +35,8 @@ class WebInterfaceManager:
             app_state.usersettings = self.usersettings
             app_state.ledsettings = self.ledsettings
             app_state.ledstrip = self.ledstrip
+            app_state.ledsettings2 = self.ledsettings2
+            app_state.ledstrip2 = self.ledstrip2
             app_state.learning = self.learning
             app_state.saving = self.saving
             app_state.midiports = self.midiports

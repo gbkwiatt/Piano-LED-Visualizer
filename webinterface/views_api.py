@@ -215,84 +215,96 @@ def get_timezones():
         return jsonify(success=False, error=str(e))
 
 
+def resolve_strip(strip):
+    """Pick the strip a settings change applies to, defaulting to the first.
+
+    Both strips expose the same settings under the same names, so every branch of
+    change_setting works unchanged for either one once these two are bound.
+    """
+    if str(strip) == "2" and app_state.ledsettings2 is not None:
+        return app_state.ledsettings2, app_state.ledstrip2
+    return app_state.ledsettings, app_state.ledstrip
+
+
 @webinterface.route('/api/change_setting', methods=['GET'])
 def change_setting():
     setting_name = request.args.get('setting_name')
     value = request.args.get('value')
     second_value = request.args.get('second_value')
     disable_sequence = request.args.get('disable_sequence')
+    ledsettings, ledstrip = resolve_strip(request.args.get('strip'))
 
     reload_sequence = True
     if second_value == "no_reload":
         reload_sequence = False
 
     if disable_sequence == "true":
-        #menu = app_state.ledsettings.menu
-        #ledstrip = app_state.ledsettings.ledstrip
-        #app_state.ledsettings.__init__(app_state.usersettings)
-        #app_state.ledsettings.menu = menu
-        #app_state.ledsettings.add_instance(menu, ledstrip)
-        #app_state.ledsettings.ledstrip = ledstrip
-        app_state.ledsettings.sequence_active = False
+        #menu = ledsettings.menu
+        #ledstrip = ledsettings.ledstrip
+        #ledsettings.__init__(app_state.usersettings)
+        #ledsettings.menu = menu
+        #ledsettings.add_instance(menu, ledstrip)
+        #ledsettings.ledstrip = ledstrip
+        ledsettings.sequence_active = False
 
     if setting_name == "clean_ledstrip":
-        fastColorWipe(app_state.ledstrip.strip, True, app_state.ledsettings)
+        fastColorWipe(ledstrip.strip, True, ledsettings)
 
     if setting_name == "led_color":
         rgb = wc.hex_to_rgb("#" + value)
 
-        app_state.ledsettings.color_mode = "Single"
+        ledsettings.color_mode = "Single"
 
-        app_state.ledsettings.red = rgb[0]
-        app_state.ledsettings.green = rgb[1]
-        app_state.ledsettings.blue = rgb[2]
+        ledsettings.red = rgb[0]
+        ledsettings.green = rgb[1]
+        ledsettings.blue = rgb[2]
 
-        app_state.usersettings.change_setting_value("color_mode", app_state.ledsettings.color_mode)
+        app_state.usersettings.change_setting_value("color_mode", ledsettings.color_mode)
         app_state.usersettings.change_setting_value("red", rgb[0])
         app_state.usersettings.change_setting_value("green", rgb[1])
         app_state.usersettings.change_setting_value("blue", rgb[2])
-        app_state.ledsettings.incoming_setting_change = True
+        ledsettings.incoming_setting_change = True
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "light_mode":
-        app_state.ledsettings.mode = value
+        ledsettings.mode = value
         app_state.usersettings.change_setting_value("mode", value)
 
     if setting_name == "fading_speed":
         if not int(value):
             value = 1000
-        app_state.ledsettings.fadingspeed = int(value)
-        app_state.usersettings.change_setting_value("fadingspeed", app_state.ledsettings.fadingspeed)
+        ledsettings.fadingspeed = int(value)
+        app_state.usersettings.change_setting_value("fadingspeed", ledsettings.fadingspeed)
     
     if setting_name == "velocity_speed":
         if not int(value):
             value = 1000
-        app_state.ledsettings.velocity_speed = int(value)
-        app_state.usersettings.change_setting_value("velocity_speed", app_state.ledsettings.velocity_speed)
+        ledsettings.velocity_speed = int(value)
+        app_state.usersettings.change_setting_value("velocity_speed", ledsettings.velocity_speed)
     
     if setting_name == "pedal_speed":
         if not int(value):
             value = 1000
-        app_state.ledsettings.pedal_speed = int(value)
-        app_state.usersettings.change_setting_value("pedal_speed", app_state.ledsettings.pedal_speed)
+        ledsettings.pedal_speed = int(value)
+        app_state.usersettings.change_setting_value("pedal_speed", ledsettings.pedal_speed)
 
     if setting_name == "pulse_animation_speed":
         if not int(value):
             value = 1000
-        app_state.ledsettings.pulse_animation_speed = int(value)
-        app_state.usersettings.change_setting_value("pulse_animation_speed", app_state.ledsettings.pulse_animation_speed)
+        ledsettings.pulse_animation_speed = int(value)
+        app_state.usersettings.change_setting_value("pulse_animation_speed", ledsettings.pulse_animation_speed)
 
     if setting_name == "pulse_animation_distance":
         if not int(value):
             value = 10
-        app_state.ledsettings.pulse_animation_distance = int(value)
-        app_state.usersettings.change_setting_value("pulse_animation_distance", app_state.ledsettings.pulse_animation_distance)
+        ledsettings.pulse_animation_distance = int(value)
+        app_state.usersettings.change_setting_value("pulse_animation_distance", ledsettings.pulse_animation_distance)
 
     if setting_name == "pulse_flicker_strength":
         if not int(value):
             value = 5
-        app_state.ledsettings.pulse_flicker_strength = int(value)
-        app_state.usersettings.change_setting_value("pulse_flicker_strength", app_state.ledsettings.pulse_flicker_strength)
+        ledsettings.pulse_flicker_strength = int(value)
+        app_state.usersettings.change_setting_value("pulse_flicker_strength", ledsettings.pulse_flicker_strength)
 
     if setting_name == "pulse_flicker_speed":
         # Value is already in radians/sec from JavaScript conversion
@@ -302,57 +314,57 @@ def change_setting():
                 float_value = 30.0  # Default: ~4.77 Hz in radians/sec
         except (ValueError, TypeError):
             float_value = 30.0  # Default: ~4.77 Hz in radians/sec
-        app_state.ledsettings.pulse_flicker_speed = float_value
-        app_state.usersettings.change_setting_value("pulse_flicker_speed", app_state.ledsettings.pulse_flicker_speed)
+        ledsettings.pulse_flicker_speed = float_value
+        app_state.usersettings.change_setting_value("pulse_flicker_speed", ledsettings.pulse_flicker_speed)
 
     if setting_name == "brightness":
         app_state.usersettings.change_setting_value("brightness_percent", int(value))
-        app_state.ledstrip.change_brightness(int(value), True)
+        ledstrip.change_brightness(int(value), True)
 
     if setting_name == "led_animation_brightness_percent":
         app_state.usersettings.change_setting_value("led_animation_brightness_percent", int(value))
-        app_state.ledsettings.led_animation_brightness_percent = int(value)
+        ledsettings.led_animation_brightness_percent = int(value)
 
     if setting_name == "backlight_brightness":
-        app_state.ledsettings.backlight_brightness_percent = int(value)
-        app_state.ledsettings.backlight_brightness = 255 * app_state.ledsettings.backlight_brightness_percent / 100
+        ledsettings.backlight_brightness_percent = int(value)
+        ledsettings.backlight_brightness = 255 * ledsettings.backlight_brightness_percent / 100
         app_state.usersettings.change_setting_value("backlight_brightness",
-                                                       int(app_state.ledsettings.backlight_brightness))
+                                                       int(ledsettings.backlight_brightness))
         app_state.usersettings.change_setting_value("backlight_brightness_percent",
-                                                       app_state.ledsettings.backlight_brightness_percent)
-        fastColorWipe(app_state.ledstrip.strip, True, app_state.ledsettings)
+                                                       ledsettings.backlight_brightness_percent)
+        fastColorWipe(ledstrip.strip, True, ledsettings)
 
     if setting_name == "disable_backlight_on_idle":
         value = int(value == 'true')
-        app_state.ledsettings.disable_backlight_on_idle = int(value)
-        app_state.usersettings.change_setting_value("disable_backlight_on_idle", app_state.ledsettings.disable_backlight_on_idle)
+        ledsettings.disable_backlight_on_idle = int(value)
+        app_state.usersettings.change_setting_value("disable_backlight_on_idle", ledsettings.disable_backlight_on_idle)
 
     if setting_name == "backlight_color":
         rgb = wc.hex_to_rgb("#" + value)
 
-        app_state.ledsettings.backlight_red = rgb[0]
-        app_state.ledsettings.backlight_green = rgb[1]
-        app_state.ledsettings.backlight_blue = rgb[2]
+        ledsettings.backlight_red = rgb[0]
+        ledsettings.backlight_green = rgb[1]
+        ledsettings.backlight_blue = rgb[2]
 
         app_state.usersettings.change_setting_value("backlight_red", rgb[0])
         app_state.usersettings.change_setting_value("backlight_green", rgb[1])
         app_state.usersettings.change_setting_value("backlight_blue", rgb[2])
 
-        fastColorWipe(app_state.ledstrip.strip, True, app_state.ledsettings)
+        fastColorWipe(ledstrip.strip, True, ledsettings)
 
     if setting_name == "sides_color":
         rgb = wc.hex_to_rgb("#" + value)
 
-        app_state.ledsettings.adjacent_red = rgb[0]
-        app_state.ledsettings.adjacent_green = rgb[1]
-        app_state.ledsettings.adjacent_blue = rgb[2]
+        ledsettings.adjacent_red = rgb[0]
+        ledsettings.adjacent_green = rgb[1]
+        ledsettings.adjacent_blue = rgb[2]
 
         app_state.usersettings.change_setting_value("adjacent_red", rgb[0])
         app_state.usersettings.change_setting_value("adjacent_green", rgb[1])
         app_state.usersettings.change_setting_value("adjacent_blue", rgb[2])
 
     if setting_name == "sides_color_mode":
-        app_state.ledsettings.adjacent_mode = value
+        ledsettings.adjacent_mode = value
         app_state.usersettings.change_setting_value("adjacent_mode", value)
 
     if setting_name == "piano_port":
@@ -385,48 +397,46 @@ def change_setting():
 
     if setting_name == "skipped_notes":
         app_state.usersettings.change_setting_value("skipped_notes", value)
-        app_state.ledsettings.skipped_notes = value
+        ledsettings.skipped_notes = value
 
     if setting_name == "add_note_offset":
-        app_state.ledsettings.add_note_offset()
+        ledsettings.add_note_offset()
         return jsonify(success=True, reload=True)
 
     if setting_name == "append_note_offset":
-        app_state.ledsettings.append_note_offset()
+        ledsettings.append_note_offset()
         return jsonify(success=True, reload=True)
 
     if setting_name == "remove_note_offset":
-        app_state.ledsettings.del_note_offset(int(value) + 1)
+        ledsettings.del_note_offset(int(value) + 1)
         return jsonify(success=True, reload=True)
 
     if setting_name == "note_offsets":
         app_state.usersettings.change_setting_value("note_offsets", value)
 
     if setting_name == "update_note_offset":
-        app_state.ledsettings.update_note_offset(int(value) + 1, second_value)
+        ledsettings.update_note_offset(int(value) + 1, second_value)
         return jsonify(success=True, reload=True)
 
     if setting_name == "led_count":
-        # Resizing the strip rebuilds the driver. With a second strip attached that
-        # tears down the shared controller underneath the running render loop, so
-        # persist the value and let a restart apply it instead.
-        if app_state.ledstrip.strip2_enabled:
-            app_state.usersettings.change_setting_value("led_count", max(1, int(value)))
+        # Resizing rebuilds the driver. While two strips share one controller that
+        # would tear it down underneath the running render loop, so the value is
+        # persisted and a restart applies it.
+        ledstrip.change_led_count(int(value), True)
+        if ledstrip.strip2_enabled:
             app_state.usersettings.save_changes()
             app_state.platform.restart_visualizer()
             return jsonify(success=True, restart_required=True,
                            message="LED count changed. Restarting visualizer...")
-        app_state.usersettings.change_setting_value("led_count", int(value))
-        app_state.ledstrip.change_led_count(int(value), True)
 
     if setting_name == "leds_per_meter":
-        app_state.ledstrip.change_leds_per_meter(int(value))
+        ledstrip.change_leds_per_meter(int(value))
 
     if setting_name == "shift":
-        app_state.ledstrip.change_shift(int(value), True)
+        ledstrip.change_shift(int(value), True)
 
     if setting_name == "reverse":
-        app_state.ledstrip.change_reverse(int(value), True)
+        ledstrip.change_reverse(int(value), True)
 
     if setting_name == "led_strip2_enabled":
         enabled = 1 if value in ("1", "true", "True", True) else 0
@@ -451,154 +461,134 @@ def change_setting():
         return jsonify(success=True, restart_required=True,
                        message="Second LED strip pin changed. Restarting visualizer...")
 
-    if setting_name == "brightness2":
-        app_state.ledstrip.change_brightness2(int(value))
-
-    if setting_name == "led_count2":
-        app_state.ledstrip.change_led_count2(int(value))
-        app_state.usersettings.save_changes()
-        if app_state.ledstrip.strip2_enabled:
-            app_state.platform.restart_visualizer()
-            return jsonify(success=True, restart_required=True,
-                           message="Second LED strip length changed. Restarting visualizer...")
-
-    if setting_name == "leds_per_meter2":
-        app_state.ledstrip.change_leds_per_meter2(int(value))
-
-    if setting_name == "shift2":
-        app_state.ledstrip.change_shift2(int(value))
-
-    if setting_name == "reverse2":
-        app_state.ledstrip.change_reverse2(int(value))
-
     if setting_name == "color_mode":
         reload_sequence = True
         if second_value == "no_reload":
             reload_sequence = False
 
-        app_state.ledsettings.color_mode = value
-        app_state.usersettings.change_setting_value("color_mode", app_state.ledsettings.color_mode)
+        ledsettings.color_mode = value
+        app_state.usersettings.change_setting_value("color_mode", ledsettings.color_mode)
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "add_multicolor":
-        app_state.ledsettings.addcolor()
+        ledsettings.addcolor()
         return jsonify(success=True, reload=True)
 
     if setting_name == "add_multicolor_and_set_value":
         settings = json.loads(value)
 
-        app_state.ledsettings.multicolor.clear()
-        app_state.ledsettings.multicolor_range.clear()
+        ledsettings.multicolor.clear()
+        ledsettings.multicolor_range.clear()
 
         for key, value in settings.items():
             rgb = wc.hex_to_rgb("#" + value["color"])
 
-            app_state.ledsettings.multicolor.append([int(rgb[0]), int(rgb[1]), int(rgb[2])])
-            app_state.ledsettings.multicolor_range.append([int(value["range"][0]), int(value["range"][1])])
+            ledsettings.multicolor.append([int(rgb[0]), int(rgb[1]), int(rgb[2])])
+            ledsettings.multicolor_range.append([int(value["range"][0]), int(value["range"][1])])
 
-        app_state.usersettings.change_setting_value("multicolor", app_state.ledsettings.multicolor)
+        app_state.usersettings.change_setting_value("multicolor", ledsettings.multicolor)
         app_state.usersettings.change_setting_value("multicolor_range",
-                                                       app_state.ledsettings.multicolor_range)
+                                                       ledsettings.multicolor_range)
 
-        cmap.update_multicolor(app_state.ledsettings.multicolor_range, app_state.ledsettings.multicolor)
+        cmap.update_multicolor(ledsettings.multicolor_range, ledsettings.multicolor)
 
         return jsonify(success=True)
 
     if setting_name == "remove_multicolor":
-        app_state.ledsettings.deletecolor(int(value) + 1)
-        cmap.update_multicolor(app_state.ledsettings.multicolor_range, app_state.ledsettings.multicolor)
+        ledsettings.deletecolor(int(value) + 1)
+        cmap.update_multicolor(ledsettings.multicolor_range, ledsettings.multicolor)
         return jsonify(success=True, reload=True)
 
     if setting_name == "multicolor":
         rgb = wc.hex_to_rgb("#" + value)
-        app_state.ledsettings.multicolor[int(second_value)][0] = rgb[0]
-        app_state.ledsettings.multicolor[int(second_value)][1] = rgb[1]
-        app_state.ledsettings.multicolor[int(second_value)][2] = rgb[2]
+        ledsettings.multicolor[int(second_value)][0] = rgb[0]
+        ledsettings.multicolor[int(second_value)][1] = rgb[1]
+        ledsettings.multicolor[int(second_value)][2] = rgb[2]
 
-        app_state.usersettings.change_setting_value("multicolor", app_state.ledsettings.multicolor)
+        app_state.usersettings.change_setting_value("multicolor", ledsettings.multicolor)
 
-        cmap.update_multicolor(app_state.ledsettings.multicolor_range, app_state.ledsettings.multicolor)
+        cmap.update_multicolor(ledsettings.multicolor_range, ledsettings.multicolor)
 
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "multicolor_range_left":
-        app_state.ledsettings.multicolor_range[int(second_value)][0] = int(value)
-        app_state.usersettings.change_setting_value("multicolor_range", app_state.ledsettings.multicolor_range)
+        ledsettings.multicolor_range[int(second_value)][0] = int(value)
+        app_state.usersettings.change_setting_value("multicolor_range", ledsettings.multicolor_range)
 
-        cmap.update_multicolor(app_state.ledsettings.multicolor_range, app_state.ledsettings.multicolor)
+        cmap.update_multicolor(ledsettings.multicolor_range, ledsettings.multicolor)
 
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "multicolor_range_right":
-        app_state.ledsettings.multicolor_range[int(second_value)][1] = int(value)
-        app_state.usersettings.change_setting_value("multicolor_range", app_state.ledsettings.multicolor_range)
+        ledsettings.multicolor_range[int(second_value)][1] = int(value)
+        app_state.usersettings.change_setting_value("multicolor_range", ledsettings.multicolor_range)
 
-        cmap.update_multicolor(app_state.ledsettings.multicolor_range, app_state.ledsettings.multicolor)
+        cmap.update_multicolor(ledsettings.multicolor_range, ledsettings.multicolor)
 
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "remove_all_multicolors":
-        app_state.ledsettings.multicolor.clear()
-        app_state.ledsettings.multicolor_range.clear()
+        ledsettings.multicolor.clear()
+        ledsettings.multicolor_range.clear()
 
-        app_state.usersettings.change_setting_value("multicolor", app_state.ledsettings.multicolor)
-        app_state.usersettings.change_setting_value("multicolor_range", app_state.ledsettings.multicolor_range)
+        app_state.usersettings.change_setting_value("multicolor", ledsettings.multicolor)
+        app_state.usersettings.change_setting_value("multicolor_range", ledsettings.multicolor_range)
         return jsonify(success=True)
 
     if setting_name == "rainbow_offset":
-        app_state.ledsettings.rainbow_offset = int(value)
+        ledsettings.rainbow_offset = int(value)
         app_state.usersettings.change_setting_value("rainbow_offset",
-                                                       int(app_state.ledsettings.rainbow_offset))
+                                                       int(ledsettings.rainbow_offset))
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "rainbow_scale":
-        app_state.ledsettings.rainbow_scale = int(value)
+        ledsettings.rainbow_scale = int(value)
         app_state.usersettings.change_setting_value("rainbow_scale",
-                                                       int(app_state.ledsettings.rainbow_scale))
+                                                       int(ledsettings.rainbow_scale))
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "rainbow_timeshift":
-        app_state.ledsettings.rainbow_timeshift = int(value)
+        ledsettings.rainbow_timeshift = int(value)
         app_state.usersettings.change_setting_value("rainbow_timeshift",
-                                                       int(app_state.ledsettings.rainbow_timeshift))
+                                                       int(ledsettings.rainbow_timeshift))
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "rainbow_colormap":
-        app_state.ledsettings.rainbow_colormap = value
+        ledsettings.rainbow_colormap = value
         app_state.usersettings.change_setting_value("rainbow_colormap",
-                                                       app_state.ledsettings.rainbow_colormap)
+                                                       ledsettings.rainbow_colormap)
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "velocityrainbow_offset":
-        app_state.ledsettings.velocityrainbow_offset = int(value)
+        ledsettings.velocityrainbow_offset = int(value)
         app_state.usersettings.change_setting_value("velocityrainbow_offset",
-                                                       int(app_state.ledsettings.velocityrainbow_offset))
+                                                       int(ledsettings.velocityrainbow_offset))
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "velocityrainbow_scale":
-        app_state.ledsettings.velocityrainbow_scale = int(value)
+        ledsettings.velocityrainbow_scale = int(value)
         app_state.usersettings.change_setting_value("velocityrainbow_scale",
-                                                       int(app_state.ledsettings.velocityrainbow_scale))
+                                                       int(ledsettings.velocityrainbow_scale))
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "velocityrainbow_curve":
-        app_state.ledsettings.velocityrainbow_curve = int(value)
+        ledsettings.velocityrainbow_curve = int(value)
         app_state.usersettings.change_setting_value("velocityrainbow_curve",
-                                                       int(app_state.ledsettings.velocityrainbow_curve))
+                                                       int(ledsettings.velocityrainbow_curve))
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "velocityrainbow_colormap":
-        app_state.ledsettings.velocityrainbow_colormap = value
+        ledsettings.velocityrainbow_colormap = value
         app_state.usersettings.change_setting_value("velocityrainbow_colormap",
-                                                       app_state.ledsettings.velocityrainbow_colormap)
+                                                       ledsettings.velocityrainbow_colormap)
         return jsonify(success=True, reload_sequence=reload_sequence)
 
 
     if setting_name == "speed_slowest_color":
         rgb = wc.hex_to_rgb("#" + value)
-        app_state.ledsettings.speed_slowest["red"] = rgb[0]
-        app_state.ledsettings.speed_slowest["green"] = rgb[1]
-        app_state.ledsettings.speed_slowest["blue"] = rgb[2]
+        ledsettings.speed_slowest["red"] = rgb[0]
+        ledsettings.speed_slowest["green"] = rgb[1]
+        ledsettings.speed_slowest["blue"] = rgb[2]
 
         app_state.usersettings.change_setting_value("speed_slowest_red", rgb[0])
         app_state.usersettings.change_setting_value("speed_slowest_green", rgb[1])
@@ -608,9 +598,9 @@ def change_setting():
 
     if setting_name == "speed_fastest_color":
         rgb = wc.hex_to_rgb("#" + value)
-        app_state.ledsettings.speed_fastest["red"] = rgb[0]
-        app_state.ledsettings.speed_fastest["green"] = rgb[1]
-        app_state.ledsettings.speed_fastest["blue"] = rgb[2]
+        ledsettings.speed_fastest["red"] = rgb[0]
+        ledsettings.speed_fastest["green"] = rgb[1]
+        ledsettings.speed_fastest["blue"] = rgb[2]
 
         app_state.usersettings.change_setting_value("speed_fastest_red", rgb[0])
         app_state.usersettings.change_setting_value("speed_fastest_green", rgb[1])
@@ -620,9 +610,9 @@ def change_setting():
 
     if setting_name == "gradient_start_color":
         rgb = wc.hex_to_rgb("#" + value)
-        app_state.ledsettings.gradient_start["red"] = rgb[0]
-        app_state.ledsettings.gradient_start["green"] = rgb[1]
-        app_state.ledsettings.gradient_start["blue"] = rgb[2]
+        ledsettings.gradient_start["red"] = rgb[0]
+        ledsettings.gradient_start["green"] = rgb[1]
+        ledsettings.gradient_start["blue"] = rgb[2]
 
         app_state.usersettings.change_setting_value("gradient_start_red", rgb[0])
         app_state.usersettings.change_setting_value("gradient_start_green", rgb[1])
@@ -632,9 +622,9 @@ def change_setting():
 
     if setting_name == "gradient_end_color":
         rgb = wc.hex_to_rgb("#" + value)
-        app_state.ledsettings.gradient_end["red"] = rgb[0]
-        app_state.ledsettings.gradient_end["green"] = rgb[1]
-        app_state.ledsettings.gradient_end["blue"] = rgb[2]
+        ledsettings.gradient_end["red"] = rgb[0]
+        ledsettings.gradient_end["green"] = rgb[1]
+        ledsettings.gradient_end["blue"] = rgb[2]
 
         app_state.usersettings.change_setting_value("gradient_end_red", rgb[0])
         app_state.usersettings.change_setting_value("gradient_end_green", rgb[1])
@@ -643,22 +633,22 @@ def change_setting():
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "speed_max_notes":
-        app_state.ledsettings.speed_max_notes = int(value)
+        ledsettings.speed_max_notes = int(value)
         app_state.usersettings.change_setting_value("speed_max_notes", int(value))
 
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "speed_period_in_seconds":
-        app_state.ledsettings.speed_period_in_seconds = float(value)
+        ledsettings.speed_period_in_seconds = float(value)
         app_state.usersettings.change_setting_value("speed_period_in_seconds", float(value))
 
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "key_in_scale_color":
         rgb = wc.hex_to_rgb("#" + value)
-        app_state.ledsettings.key_in_scale["red"] = rgb[0]
-        app_state.ledsettings.key_in_scale["green"] = rgb[1]
-        app_state.ledsettings.key_in_scale["blue"] = rgb[2]
+        ledsettings.key_in_scale["red"] = rgb[0]
+        ledsettings.key_in_scale["green"] = rgb[1]
+        ledsettings.key_in_scale["blue"] = rgb[2]
 
         app_state.usersettings.change_setting_value("key_in_scale_red", rgb[0])
         app_state.usersettings.change_setting_value("key_in_scale_green", rgb[1])
@@ -668,9 +658,9 @@ def change_setting():
 
     if setting_name == "key_not_in_scale_color":
         rgb = wc.hex_to_rgb("#" + value)
-        app_state.ledsettings.key_not_in_scale["red"] = rgb[0]
-        app_state.ledsettings.key_not_in_scale["green"] = rgb[1]
-        app_state.ledsettings.key_not_in_scale["blue"] = rgb[2]
+        ledsettings.key_not_in_scale["red"] = rgb[0]
+        ledsettings.key_not_in_scale["green"] = rgb[1]
+        ledsettings.key_not_in_scale["blue"] = rgb[2]
 
         app_state.usersettings.change_setting_value("key_not_in_scale_red", rgb[0])
         app_state.usersettings.change_setting_value("key_not_in_scale_green", rgb[1])
@@ -679,26 +669,26 @@ def change_setting():
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "scale_key":
-        app_state.ledsettings.scale_key = int(value)
+        ledsettings.scale_key = int(value)
         app_state.usersettings.change_setting_value("scale_key", int(value))
 
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "next_step":
-        app_state.ledsettings.set_sequence(0, 1, False)
+        ledsettings.set_sequence(0, 1, False)
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "set_sequence":
         if int(value) == 0:
-            menu = app_state.ledsettings.menu
-            ledstrip = app_state.ledsettings.ledstrip
-            app_state.ledsettings.__init__(app_state.usersettings)
-            app_state.ledsettings.menu = menu
-            app_state.ledsettings.ledstrip = ledstrip
-            app_state.ledsettings.sequence_active = False
+            menu = ledsettings.menu
+            ledstrip = ledsettings.ledstrip
+            ledsettings.__init__(app_state.usersettings)
+            ledsettings.menu = menu
+            ledsettings.ledstrip = ledstrip
+            ledsettings.sequence_active = False
         else:
-            app_state.ledsettings.set_sequence(int(value) - 1, 0)
-        app_state.ledsettings.incoming_setting_change = True
+            ledsettings.set_sequence(int(value) - 1, 0)
+        ledsettings.incoming_setting_change = True
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "change_sequence_name":
@@ -789,7 +779,7 @@ def change_setting():
         sequences_tree.getElementsByTagName("list")[0].appendChild(element)
 
         pretty_save("config/sequences.xml", sequences_tree)
-        app_state.ledsettings.incoming_setting_change = True
+        ledsettings.incoming_setting_change = True
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "remove_sequence":
@@ -809,7 +799,7 @@ def change_setting():
                 i += 1
 
         pretty_save("config/sequences.xml", sequences_tree)
-        app_state.ledsettings.incoming_setting_change = True
+        ledsettings.incoming_setting_change = True
         return jsonify(success=True, reload_sequence=reload_sequence)
 
     if setting_name == "add_step":
@@ -848,7 +838,7 @@ def change_setting():
         sequences_tree.getElementsByTagName("sequence_" + str(value))[0].appendChild(step)
 
         pretty_save("config/sequences.xml", sequences_tree)
-        app_state.ledsettings.incoming_setting_change = True
+        ledsettings.incoming_setting_change = True
         return jsonify(success=True, reload_sequence=reload_sequence, reload_steps_list=True,
                        set_sequence_step_number=step_amount)
 
@@ -876,7 +866,7 @@ def change_setting():
                 i += 1
 
         pretty_save("config/sequences.xml", sequences_tree)
-        app_state.ledsettings.incoming_setting_change = True
+        ledsettings.incoming_setting_change = True
         return jsonify(success=True, reload_sequence=reload_sequence, reload_steps_list=True)
 
     # saving current led settings as sequence step
@@ -897,48 +887,48 @@ def change_setting():
         # create new step node
         step = sequences_tree.createElement("step_" + str(second_value))
 
-        # load color mode from app_state.ledsettings and put it into step node
+        # load color mode from ledsettings and put it into step node
         color_mode = sequences_tree.createElement("color")
-        color_mode.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.color_mode)))
+        color_mode.appendChild(sequences_tree.createTextNode(str(ledsettings.color_mode)))
         step.appendChild(color_mode)
 
-        # load mode from app_state.ledsettings and put it into step node
+        # load mode from ledsettings and put it into step node
         mode = sequences_tree.createElement("light_mode")
-        mode.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.mode)))
+        mode.appendChild(sequences_tree.createTextNode(str(ledsettings.mode)))
         step.appendChild(mode)
 
         # Save mode-specific speed settings
-        if app_state.ledsettings.mode == "Fading":
+        if ledsettings.mode == "Fading":
             fadingspeed = sequences_tree.createElement("fadingspeed")
-            fadingspeed.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.fadingspeed)))
+            fadingspeed.appendChild(sequences_tree.createTextNode(str(ledsettings.fadingspeed)))
             step.appendChild(fadingspeed)
-        elif app_state.ledsettings.mode == "Velocity":
+        elif ledsettings.mode == "Velocity":
             velocity_speed = sequences_tree.createElement("velocity_speed")
-            velocity_speed.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.velocity_speed)))
+            velocity_speed.appendChild(sequences_tree.createTextNode(str(ledsettings.velocity_speed)))
             step.appendChild(velocity_speed)
-        elif app_state.ledsettings.mode == "Pedal":
+        elif ledsettings.mode == "Pedal":
             pedal_speed = sequences_tree.createElement("pedal_speed")
-            pedal_speed.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.pedal_speed)))
+            pedal_speed.appendChild(sequences_tree.createTextNode(str(ledsettings.pedal_speed)))
             step.appendChild(pedal_speed)
 
-        # if color_mode is equal to "Single" load color from app_state.ledsettings and put it into step node
-        if app_state.ledsettings.color_mode == "Single":
+        # if color_mode is equal to "Single" load color from ledsettings and put it into step node
+        if ledsettings.color_mode == "Single":
             red = sequences_tree.createElement("Red")
-            red.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.red)))
+            red.appendChild(sequences_tree.createTextNode(str(ledsettings.red)))
             step.appendChild(red)
 
             green = sequences_tree.createElement("Green")
-            green.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.green)))
+            green.appendChild(sequences_tree.createTextNode(str(ledsettings.green)))
             step.appendChild(green)
 
             blue = sequences_tree.createElement("Blue")
-            blue.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.blue)))
+            blue.appendChild(sequences_tree.createTextNode(str(ledsettings.blue)))
             step.appendChild(blue)
 
-        # if color_mode is equal to "Multicolor" load colors from app_state.ledsettings and put it into step node
-        if app_state.ledsettings.color_mode == "Multicolor":
-            # load value from app_state.ledsettings.multicolor
-            multicolor = app_state.ledsettings.multicolor
+        # if color_mode is equal to "Multicolor" load colors from ledsettings and put it into step node
+        if ledsettings.color_mode == "Multicolor":
+            # load value from ledsettings.multicolor
+            multicolor = ledsettings.multicolor
 
             # loop through multicolor object and add each color to step node
             # under "sequence_"+str(value) with tag name "color_"+str(i)
@@ -952,7 +942,7 @@ def change_setting():
                 step.appendChild(color)
 
             # same as above but with multicolor_range and "color_range_"+str(i)
-            multicolor_range = app_state.ledsettings.multicolor_range
+            multicolor_range = ledsettings.multicolor_range
             for i in range(len(multicolor_range)):
                 color_range = sequences_tree.createElement("color_range_" + str(i + 1))
                 new_multicolor_range = str(multicolor_range[i])
@@ -962,165 +952,165 @@ def change_setting():
                 color_range.appendChild(sequences_tree.createTextNode(new_multicolor_range))
                 step.appendChild(color_range)
 
-        # if color_mode is equal to "Rainbow" load colors from app_state.ledsettings and put it into step node
-        if app_state.ledsettings.color_mode == "Rainbow":
-            # load values rainbow_offset, rainbow_scale and rainbow_timeshift from app_state.ledsettings and put them into step node under Offset, Scale and Timeshift
+        # if color_mode is equal to "Rainbow" load colors from ledsettings and put it into step node
+        if ledsettings.color_mode == "Rainbow":
+            # load values rainbow_offset, rainbow_scale and rainbow_timeshift from ledsettings and put them into step node under Offset, Scale and Timeshift
             rainbow_offset = sequences_tree.createElement("Offset")
-            rainbow_offset.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.rainbow_offset)))
+            rainbow_offset.appendChild(sequences_tree.createTextNode(str(ledsettings.rainbow_offset)))
             step.appendChild(rainbow_offset)
 
             rainbow_scale = sequences_tree.createElement("Scale")
-            rainbow_scale.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.rainbow_scale)))
+            rainbow_scale.appendChild(sequences_tree.createTextNode(str(ledsettings.rainbow_scale)))
             step.appendChild(rainbow_scale)
 
             rainbow_timeshift = sequences_tree.createElement("Timeshift")
             rainbow_timeshift.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.rainbow_timeshift)))
+                sequences_tree.createTextNode(str(ledsettings.rainbow_timeshift)))
             step.appendChild(rainbow_timeshift)
 
             rainbow_colormap = sequences_tree.createElement("Colormap")
             rainbow_colormap.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.rainbow_colormap)))
+                sequences_tree.createTextNode(str(ledsettings.rainbow_colormap)))
             step.appendChild(rainbow_colormap)
 
-        # if color_mode is equal to "VelocityRainbow" load colors from app_state.ledsettings and put it into step node
-        if app_state.ledsettings.color_mode == "VelocityRainbow":
+        # if color_mode is equal to "VelocityRainbow" load colors from ledsettings and put it into step node
+        if ledsettings.color_mode == "VelocityRainbow":
             velocityrainbow_offset = sequences_tree.createElement("Offset")
             velocityrainbow_offset.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.velocityrainbow_offset)))
+                sequences_tree.createTextNode(str(ledsettings.velocityrainbow_offset)))
             step.appendChild(velocityrainbow_offset)
 
             velocityrainbow_scale = sequences_tree.createElement("Scale")
             velocityrainbow_scale.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.velocityrainbow_scale)))
+                sequences_tree.createTextNode(str(ledsettings.velocityrainbow_scale)))
             step.appendChild(velocityrainbow_scale)
 
             velocityrainbow_curve = sequences_tree.createElement("Curve")
             velocityrainbow_curve.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.velocityrainbow_curve)))
+                sequences_tree.createTextNode(str(ledsettings.velocityrainbow_curve)))
             step.appendChild(velocityrainbow_curve)
 
             velocityrainbow_colormap = sequences_tree.createElement("Colormap")
             velocityrainbow_colormap.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.velocityrainbow_colormap)))
+                sequences_tree.createTextNode(str(ledsettings.velocityrainbow_colormap)))
             step.appendChild(velocityrainbow_colormap)
 
-        # if color_mode is equal to "Speed" load colors from app_state.ledsettings and put it into step node
-        if app_state.ledsettings.color_mode == "Speed":
-            # load values speed_slowest["red"] etc. from app_state.ledsettings and put them under speed_slowest_red etc
+        # if color_mode is equal to "Speed" load colors from ledsettings and put it into step node
+        if ledsettings.color_mode == "Speed":
+            # load values speed_slowest["red"] etc. from ledsettings and put them under speed_slowest_red etc
             speed_slowest_red = sequences_tree.createElement("speed_slowest_red")
             speed_slowest_red.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.speed_slowest["red"])))
+                sequences_tree.createTextNode(str(ledsettings.speed_slowest["red"])))
             step.appendChild(speed_slowest_red)
 
             speed_slowest_green = sequences_tree.createElement("speed_slowest_green")
             speed_slowest_green.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.speed_slowest["green"])))
+                sequences_tree.createTextNode(str(ledsettings.speed_slowest["green"])))
             step.appendChild(speed_slowest_green)
 
             speed_slowest_blue = sequences_tree.createElement("speed_slowest_blue")
             speed_slowest_blue.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.speed_slowest["blue"])))
+                sequences_tree.createTextNode(str(ledsettings.speed_slowest["blue"])))
             step.appendChild(speed_slowest_blue)
 
             # same as above but with "fastest"
             speed_fastest_red = sequences_tree.createElement("speed_fastest_red")
             speed_fastest_red.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.speed_fastest["red"])))
+                sequences_tree.createTextNode(str(ledsettings.speed_fastest["red"])))
             step.appendChild(speed_fastest_red)
 
             speed_fastest_green = sequences_tree.createElement("speed_fastest_green")
             speed_fastest_green.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.speed_fastest["green"])))
+                sequences_tree.createTextNode(str(ledsettings.speed_fastest["green"])))
             step.appendChild(speed_fastest_green)
 
             speed_fastest_blue = sequences_tree.createElement("speed_fastest_blue")
             speed_fastest_blue.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.speed_fastest["blue"])))
+                sequences_tree.createTextNode(str(ledsettings.speed_fastest["blue"])))
             step.appendChild(speed_fastest_blue)
 
-            # load "speed_max_notes" and "speed_period_in_seconds" values from app_state.ledsettings
+            # load "speed_max_notes" and "speed_period_in_seconds" values from ledsettings
             # and put them under speed_max_notes and speed_period_in_seconds
 
             speed_max_notes = sequences_tree.createElement("speed_max_notes")
-            speed_max_notes.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.speed_max_notes)))
+            speed_max_notes.appendChild(sequences_tree.createTextNode(str(ledsettings.speed_max_notes)))
             step.appendChild(speed_max_notes)
 
             speed_period_in_seconds = sequences_tree.createElement("speed_period_in_seconds")
             speed_period_in_seconds.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.speed_period_in_seconds)))
+                sequences_tree.createTextNode(str(ledsettings.speed_period_in_seconds)))
             step.appendChild(speed_period_in_seconds)
 
-        # if color_mode is equal to "Gradient" load colors from app_state.ledsettings and put it into step node
-        if app_state.ledsettings.color_mode == "Gradient":
-            # load values gradient_start_red etc from app_state.ledsettings and put them under gradient_start_red etc
+        # if color_mode is equal to "Gradient" load colors from ledsettings and put it into step node
+        if ledsettings.color_mode == "Gradient":
+            # load values gradient_start_red etc from ledsettings and put them under gradient_start_red etc
             gradient_start_red = sequences_tree.createElement("gradient_start_red")
             gradient_start_red.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.gradient_start["red"])))
+                sequences_tree.createTextNode(str(ledsettings.gradient_start["red"])))
             step.appendChild(gradient_start_red)
 
             gradient_start_green = sequences_tree.createElement("gradient_start_green")
             gradient_start_green.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.gradient_start["green"])))
+                sequences_tree.createTextNode(str(ledsettings.gradient_start["green"])))
             step.appendChild(gradient_start_green)
 
             gradient_start_blue = sequences_tree.createElement("gradient_start_blue")
             gradient_start_blue.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.gradient_start["blue"])))
+                sequences_tree.createTextNode(str(ledsettings.gradient_start["blue"])))
             step.appendChild(gradient_start_blue)
 
             # same as above but with gradient_end
             gradient_end_red = sequences_tree.createElement("gradient_end_red")
             gradient_end_red.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.gradient_end["red"])))
+                sequences_tree.createTextNode(str(ledsettings.gradient_end["red"])))
             step.appendChild(gradient_end_red)
 
             gradient_end_green = sequences_tree.createElement("gradient_end_green")
             gradient_end_green.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.gradient_end["green"])))
+                sequences_tree.createTextNode(str(ledsettings.gradient_end["green"])))
             step.appendChild(gradient_end_green)
 
             gradient_end_blue = sequences_tree.createElement("gradient_end_blue")
             gradient_end_blue.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.gradient_end["blue"])))
+                sequences_tree.createTextNode(str(ledsettings.gradient_end["blue"])))
             step.appendChild(gradient_end_blue)
 
-        # if color_mode is equal to "Scale" load colors from app_state.ledsettings and put it into step node
-        if app_state.ledsettings.color_mode == "Scale":
-            # load values key_in_scale_red etc from app_state.ledsettings and put them under key_in_scale_red etc
+        # if color_mode is equal to "Scale" load colors from ledsettings and put it into step node
+        if ledsettings.color_mode == "Scale":
+            # load values key_in_scale_red etc from ledsettings and put them under key_in_scale_red etc
             key_in_scale_red = sequences_tree.createElement("key_in_scale_red")
             key_in_scale_red.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.key_in_scale["red"])))
+                sequences_tree.createTextNode(str(ledsettings.key_in_scale["red"])))
             step.appendChild(key_in_scale_red)
 
             key_in_scale_green = sequences_tree.createElement("key_in_scale_green")
             key_in_scale_green.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.key_in_scale["green"])))
+                sequences_tree.createTextNode(str(ledsettings.key_in_scale["green"])))
             step.appendChild(key_in_scale_green)
 
             key_in_scale_blue = sequences_tree.createElement("key_in_scale_blue")
             key_in_scale_blue.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.key_in_scale["blue"])))
+                sequences_tree.createTextNode(str(ledsettings.key_in_scale["blue"])))
             step.appendChild(key_in_scale_blue)
 
             # same as above but with key_not_in_scale
             key_not_in_scale_red = sequences_tree.createElement("key_not_in_scale_red")
             key_not_in_scale_red.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.key_not_in_scale["red"])))
+                sequences_tree.createTextNode(str(ledsettings.key_not_in_scale["red"])))
             step.appendChild(key_not_in_scale_red)
 
             key_not_in_scale_green = sequences_tree.createElement("key_not_in_scale_green")
             key_not_in_scale_green.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.key_not_in_scale["green"])))
+                sequences_tree.createTextNode(str(ledsettings.key_not_in_scale["green"])))
             step.appendChild(key_not_in_scale_green)
 
             key_not_in_scale_blue = sequences_tree.createElement("key_not_in_scale_blue")
             key_not_in_scale_blue.appendChild(
-                sequences_tree.createTextNode(str(app_state.ledsettings.key_not_in_scale["blue"])))
+                sequences_tree.createTextNode(str(ledsettings.key_not_in_scale["blue"])))
             step.appendChild(key_not_in_scale_blue)
 
             scale_key = sequences_tree.createElement("scale_key")
-            scale_key.appendChild(sequences_tree.createTextNode(str(app_state.ledsettings.scale_key)))
+            scale_key.appendChild(sequences_tree.createTextNode(str(ledsettings.scale_key)))
             step.appendChild(scale_key)
 
         try:
@@ -1133,7 +1123,7 @@ def change_setting():
 
         pretty_save("config/sequences.xml", sequences_tree)
 
-        app_state.ledsettings.incoming_setting_change = True
+        ledsettings.incoming_setting_change = True
 
         return jsonify(success=True, reload_sequence=reload_sequence, reload_steps_list=True)
 
@@ -1161,7 +1151,7 @@ def change_setting():
 
         channel_value = 0 if pin_value in PWM_CHANNEL_0_PINS else 1
 
-        if app_state.ledstrip.strip2_enabled:
+        if ledstrip.strip2_enabled:
             pin2 = str(app_state.usersettings.get_setting_value((STRIP2, "led_pin")))
             if pin2 not in second_strip_pins(pin_value):
                 return jsonify(success=False,
@@ -1214,7 +1204,7 @@ def change_setting():
     if setting_name == "multicolor_iteration":
         value = int(value == 'true')
         app_state.usersettings.change_setting_value("multicolor_iteration", value)
-        app_state.ledsettings.multicolor_iteration = value
+        ledsettings.multicolor_iteration = value
 
     if setting_name == "start_recording":
         app_state.saving.start_recording()
@@ -1325,15 +1315,15 @@ def change_setting():
     if setting_name == "start_midi_play":
         app_state.saving.t = threading.Thread(target=play_midi, args=(value, app_state.midiports,
                                                                          app_state.saving, app_state.menu,
-                                                                         app_state.ledsettings,
-                                                                         app_state.ledstrip))
+                                                                         ledsettings,
+                                                                         ledstrip))
         app_state.saving.t.start()
 
         return jsonify(success=True, reload_songs=True)
 
     if setting_name == "stop_midi_play":
         app_state.saving.is_playing_midi.clear()
-        fastColorWipe(app_state.ledstrip.strip, True, app_state.ledsettings)
+        fastColorWipe(ledstrip.strip, True, ledsettings)
 
         return jsonify(success=True, reload_songs=True)
 
@@ -1351,7 +1341,7 @@ def change_setting():
 
     if setting_name == "stop_learning_song":
         app_state.learning.is_started_midi = False
-        fastColorWipe(app_state.ledstrip.strip, True, app_state.ledsettings)
+        fastColorWipe(ledstrip.strip, True, ledsettings)
 
         return jsonify(success=True)
 
@@ -1718,8 +1708,8 @@ def change_setting():
     if setting_name == "led_animation_speed":
         app_state.usersettings.change_setting_value("led_animation_speed", value)
         # Update ledsettings if it has the attribute
-        if hasattr(app_state.ledsettings, 'led_animation_speed'):
-            app_state.ledsettings.led_animation_speed = value
+        if hasattr(ledsettings, 'led_animation_speed'):
+            ledsettings.led_animation_speed = value
         
         # Restart animation if one is running
         if (app_state.menu.is_animation_running or app_state.menu.is_idle_animation_running) and hasattr(app_state.menu, 'current_animation_name'):
@@ -1738,8 +1728,8 @@ def change_setting():
                 
                 registry.start_animation(
                     name=current_name,
-                    ledstrip=app_state.ledstrip,
-                    ledsettings=app_state.ledsettings,
+                    ledstrip=ledstrip,
+                    ledsettings=ledsettings,
                     menu=app_state.menu,
                     param=param,
                     usersettings=app_state.usersettings,
@@ -1750,7 +1740,7 @@ def change_setting():
 
     if setting_name == "led_gamma":
         app_state.usersettings.change_setting_value("led_gamma", value)
-        app_state.ledstrip.change_gamma(float(value))
+        ledstrip.change_gamma(float(value))
 
         return jsonify(success=True)
 
@@ -1940,48 +1930,51 @@ def get_system_time():
 @webinterface.route('/api/get_settings', methods=['GET'])
 def get_settings():
     response = {}
+    ledsettings, ledstrip = resolve_strip(request.args.get('strip'))
+    # Every LED value below comes from the selected strip's own settings section.
+    get = ledsettings._get
 
-    red = app_state.usersettings.get_setting_value("red")
-    green = app_state.usersettings.get_setting_value("green")
-    blue = app_state.usersettings.get_setting_value("blue")
+    red = get("red")
+    green = get("green")
+    blue = get("blue")
     led_color = wc.rgb_to_hex((int(red), int(green), int(blue)))
 
-    backlight_red = app_state.usersettings.get_setting_value("backlight_red")
-    backlight_green = app_state.usersettings.get_setting_value("backlight_green")
-    backlight_blue = app_state.usersettings.get_setting_value("backlight_blue")
+    backlight_red = get("backlight_red")
+    backlight_green = get("backlight_green")
+    backlight_blue = get("backlight_blue")
     backlight_color = wc.rgb_to_hex((int(backlight_red), int(backlight_green), int(backlight_blue)))
 
-    sides_red = app_state.usersettings.get_setting_value("adjacent_red")
-    sides_green = app_state.usersettings.get_setting_value("adjacent_green")
-    sides_blue = app_state.usersettings.get_setting_value("adjacent_blue")
+    sides_red = get("adjacent_red")
+    sides_green = get("adjacent_green")
+    sides_blue = get("adjacent_blue")
     sides_color = wc.rgb_to_hex((int(sides_red), int(sides_green), int(sides_blue)))
 
-    light_mode = app_state.usersettings.get_setting_value("mode")
+    light_mode = get("mode")
     # Get mode-specific speed
     if light_mode == "Fading":
-        fading_speed = app_state.usersettings.get_setting_value("fadingspeed")
+        fading_speed = get("fadingspeed")
     elif light_mode == "Velocity":
-        fading_speed = app_state.usersettings.get_setting_value("velocity_speed")
+        fading_speed = get("velocity_speed")
         if not fading_speed:
-            fading_speed = app_state.usersettings.get_setting_value("fadingspeed")  # Fallback
+            fading_speed = get("fadingspeed")  # Fallback
     elif light_mode == "Pedal":
-        fading_speed = app_state.usersettings.get_setting_value("pedal_speed")
+        fading_speed = get("pedal_speed")
         if not fading_speed:
-            fading_speed = app_state.usersettings.get_setting_value("fadingspeed")  # Fallback
+            fading_speed = get("fadingspeed")  # Fallback
     else:
-        fading_speed = app_state.usersettings.get_setting_value("fadingspeed")
+        fading_speed = get("fadingspeed")
 
-    brightness = app_state.usersettings.get_setting_value("brightness_percent")
-    backlight_brightness = app_state.usersettings.get_setting_value("backlight_brightness_percent")
-    disable_backlight_on_idle = app_state.usersettings.get_setting_value("disable_backlight_on_idle")
+    brightness = get("brightness_percent")
+    backlight_brightness = get("backlight_brightness_percent")
+    disable_backlight_on_idle = get("disable_backlight_on_idle")
 
     response["led_color"] = led_color
     response["light_mode"] = light_mode
     response["fading_speed"] = fading_speed
-    response["pulse_animation_speed"] = app_state.usersettings.get_setting_value("pulse_animation_speed")
-    response["pulse_animation_distance"] = app_state.usersettings.get_setting_value("pulse_animation_distance")
-    response["pulse_flicker_strength"] = app_state.usersettings.get_setting_value("pulse_flicker_strength")
-    response["pulse_flicker_speed"] = app_state.usersettings.get_setting_value("pulse_flicker_speed")
+    response["pulse_animation_speed"] = get("pulse_animation_speed")
+    response["pulse_animation_distance"] = get("pulse_animation_distance")
+    response["pulse_flicker_strength"] = get("pulse_flicker_strength")
+    response["pulse_flicker_speed"] = get("pulse_flicker_speed")
 
     response["brightness"] = brightness
     response["backlight_brightness"] = backlight_brightness
@@ -1989,7 +1982,7 @@ def get_settings():
     response["disable_backlight_on_idle"] = disable_backlight_on_idle
     response["led_gamma"] = app_state.usersettings.get_setting_value("led_gamma")
 
-    response["sides_color_mode"] = app_state.usersettings.get_setting_value("adjacent_mode")
+    response["sides_color_mode"] = get("adjacent_mode")
     response["sides_color"] = sides_color
 
     response["piano_port"] = app_state.usersettings.get_setting_value("piano_port")
@@ -2000,12 +1993,14 @@ def get_settings():
     response["play_port"] = response["piano_port"]
     response["secondary_input_port"] = response["computer_port"]
 
-    response["skipped_notes"] = app_state.usersettings.get_setting_value("skipped_notes")
-    response["note_offsets"] = app_state.usersettings.get_setting_value("note_offsets")
-    response["led_count"] = app_state.usersettings.get_setting_value("led_count")
-    response["leds_per_meter"] = app_state.usersettings.get_setting_value("leds_per_meter")
-    response["led_shift"] = app_state.usersettings.get_setting_value("shift")
-    response["led_reverse"] = app_state.usersettings.get_setting_value("reverse")
+    response["skipped_notes"] = get("skipped_notes")
+    response["note_offsets"] = get("note_offsets")
+    response["led_count"] = get("led_count")
+    response["leds_per_meter"] = get("leds_per_meter")
+    response["led_shift"] = get("shift")
+    response["led_reverse"] = get("reverse")
+    # Always the first strip's pin, whichever strip is selected: it is what decides
+    # which PWM channel is left for the second one.
     led_pin = app_state.usersettings.get_setting_value("led_pin") or "18"
     led_pin2 = app_state.usersettings.get_setting_value((STRIP2, "led_pin")) or "13"
     allowed_pins2 = second_strip_pins(led_pin)
@@ -2015,70 +2010,65 @@ def get_settings():
     response["led_strip2_enabled"] = app_state.usersettings.get_setting_value("led_strip2_enabled") or "0"
     response["led_pin2"] = led_pin2
     response["led_pin2_options"] = pin2_options
-    response["brightness2"] = app_state.usersettings.get_setting_value((STRIP2, "brightness_percent"))
-    response["led_count2"] = app_state.usersettings.get_setting_value((STRIP2, "led_count"))
-    response["leds_per_meter2"] = app_state.usersettings.get_setting_value((STRIP2, "leds_per_meter"))
-    response["led_shift2"] = app_state.usersettings.get_setting_value((STRIP2, "shift"))
-    response["led_reverse2"] = app_state.usersettings.get_setting_value((STRIP2, "reverse"))
     response["led_strip2_active"] = app_state.ledstrip.strip_secondary is not None
 
-    response["color_mode"] = app_state.usersettings.get_setting_value("color_mode")
+    response["color_mode"] = get("color_mode")
 
-    response["multicolor"] = app_state.usersettings.get_setting_value("multicolor")
-    response["multicolor_range"] = app_state.usersettings.get_setting_value("multicolor_range")
-    response["multicolor_iteration"] = app_state.usersettings.get_setting_value("multicolor_iteration")
+    response["multicolor"] = get("multicolor")
+    response["multicolor_range"] = get("multicolor_range")
+    response["multicolor_iteration"] = get("multicolor_iteration")
 
-    response["rainbow_offset"] = app_state.usersettings.get_setting_value("rainbow_offset")
-    response["rainbow_scale"] = app_state.usersettings.get_setting_value("rainbow_scale")
-    response["rainbow_timeshift"] = app_state.usersettings.get_setting_value("rainbow_timeshift")
-    response["rainbow_colormap"] = app_state.usersettings.get_setting_value("rainbow_colormap")
+    response["rainbow_offset"] = get("rainbow_offset")
+    response["rainbow_scale"] = get("rainbow_scale")
+    response["rainbow_timeshift"] = get("rainbow_timeshift")
+    response["rainbow_colormap"] = get("rainbow_colormap")
 
-    response["velocityrainbow_offset"] = app_state.usersettings.get_setting_value("velocityrainbow_offset")
-    response["velocityrainbow_scale"] = app_state.usersettings.get_setting_value("velocityrainbow_scale")
-    response["velocityrainbow_curve"] = app_state.usersettings.get_setting_value("velocityrainbow_curve")
-    response["velocityrainbow_colormap"] = app_state.usersettings.get_setting_value("velocityrainbow_colormap")
+    response["velocityrainbow_offset"] = get("velocityrainbow_offset")
+    response["velocityrainbow_scale"] = get("velocityrainbow_scale")
+    response["velocityrainbow_curve"] = get("velocityrainbow_curve")
+    response["velocityrainbow_colormap"] = get("velocityrainbow_colormap")
 
-    speed_slowest_red = app_state.usersettings.get_setting_value("speed_slowest_red")
-    speed_slowest_green = app_state.usersettings.get_setting_value("speed_slowest_green")
-    speed_slowest_blue = app_state.usersettings.get_setting_value("speed_slowest_blue")
+    speed_slowest_red = get("speed_slowest_red")
+    speed_slowest_green = get("speed_slowest_green")
+    speed_slowest_blue = get("speed_slowest_blue")
     speed_slowest_color = wc.rgb_to_hex((int(speed_slowest_red), int(speed_slowest_green), int(speed_slowest_blue)))
     response["speed_slowest_color"] = speed_slowest_color
 
-    speed_fastest_red = app_state.usersettings.get_setting_value("speed_fastest_red")
-    speed_fastest_green = app_state.usersettings.get_setting_value("speed_fastest_green")
-    speed_fastest_blue = app_state.usersettings.get_setting_value("speed_fastest_blue")
+    speed_fastest_red = get("speed_fastest_red")
+    speed_fastest_green = get("speed_fastest_green")
+    speed_fastest_blue = get("speed_fastest_blue")
     speed_fastest_color = wc.rgb_to_hex((int(speed_fastest_red), int(speed_fastest_green), int(speed_fastest_blue)))
     response["speed_fastest_color"] = speed_fastest_color
 
-    gradient_start_red = app_state.usersettings.get_setting_value("gradient_start_red")
-    gradient_start_green = app_state.usersettings.get_setting_value("gradient_start_green")
-    gradient_start_blue = app_state.usersettings.get_setting_value("gradient_start_blue")
+    gradient_start_red = get("gradient_start_red")
+    gradient_start_green = get("gradient_start_green")
+    gradient_start_blue = get("gradient_start_blue")
     gradient_start_color = wc.rgb_to_hex((int(gradient_start_red), int(gradient_start_green), int(gradient_start_blue)))
     response["gradient_start_color"] = gradient_start_color
 
-    gradient_end_red = app_state.usersettings.get_setting_value("gradient_end_red")
-    gradient_end_green = app_state.usersettings.get_setting_value("gradient_end_green")
-    gradient_end_blue = app_state.usersettings.get_setting_value("gradient_end_blue")
+    gradient_end_red = get("gradient_end_red")
+    gradient_end_green = get("gradient_end_green")
+    gradient_end_blue = get("gradient_end_blue")
     gradient_end_color = wc.rgb_to_hex((int(gradient_end_red), int(gradient_end_green), int(gradient_end_blue)))
     response["gradient_end_color"] = gradient_end_color
 
-    key_in_scale_red = app_state.usersettings.get_setting_value("key_in_scale_red")
-    key_in_scale_green = app_state.usersettings.get_setting_value("key_in_scale_green")
-    key_in_scale_blue = app_state.usersettings.get_setting_value("key_in_scale_blue")
+    key_in_scale_red = get("key_in_scale_red")
+    key_in_scale_green = get("key_in_scale_green")
+    key_in_scale_blue = get("key_in_scale_blue")
     key_in_scale_color = wc.rgb_to_hex((int(key_in_scale_red), int(key_in_scale_green), int(key_in_scale_blue)))
     response["key_in_scale_color"] = key_in_scale_color
 
-    key_not_in_scale_red = app_state.usersettings.get_setting_value("key_not_in_scale_red")
-    key_not_in_scale_green = app_state.usersettings.get_setting_value("key_not_in_scale_green")
-    key_not_in_scale_blue = app_state.usersettings.get_setting_value("key_not_in_scale_blue")
+    key_not_in_scale_red = get("key_not_in_scale_red")
+    key_not_in_scale_green = get("key_not_in_scale_green")
+    key_not_in_scale_blue = get("key_not_in_scale_blue")
     key_not_in_scale_color = wc.rgb_to_hex(
         (int(key_not_in_scale_red), int(key_not_in_scale_green), int(key_not_in_scale_blue)))
     response["key_not_in_scale_color"] = key_not_in_scale_color
 
-    response["scale_key"] = app_state.usersettings.get_setting_value("scale_key")
+    response["scale_key"] = get("scale_key")
 
-    response["speed_max_notes"] = app_state.usersettings.get_setting_value("speed_max_notes")
-    response["speed_period_in_seconds"] = app_state.usersettings.get_setting_value("speed_period_in_seconds")
+    response["speed_max_notes"] = get("speed_max_notes")
+    response["speed_period_in_seconds"] = get("speed_period_in_seconds")
     response["hotspot_password"] = app_state.usersettings.get_setting_value("hotspot_password")
     response["practice_tool_url"] = app_state.usersettings.get_setting_value("practice_tool_url") or "https://piano-visualizer.pages.dev"
 

@@ -382,12 +382,14 @@ function change_setting(setting_name, value, second_value = false, disable_seque
         }
     }
     // Always URL-encode values; some settings (e.g. URLs) contain characters that would break the query string.
+    // `strip` tells the server which strip's settings section to write to.
     xhttp.open(
         "GET",
         "/api/change_setting?setting_name=" + encodeURIComponent(setting_name)
         + "&value=" + encodeURIComponent(value)
         + "&second_value=" + encodeURIComponent(second_value)
-        + "&disable_sequence=" + encodeURIComponent(disable_sequence),
+        + "&disable_sequence=" + encodeURIComponent(disable_sequence)
+        + "&strip=" + encodeURIComponent(active_led_strip),
         true
     );
     xhttp.send();

@@ -2,8 +2,7 @@ from lib.functions import *
 import lib.colormaps as cmap
 from lib.rpi_drivers import PixelStrip, ws
 from lib.LED_drivers import PixelStrip_Emu
-from lib.dual_strip import (DualChannelController, MirroredStrip, build_index_map,
-                            channel_for_pin)
+from lib.dual_strip import DualChannelController, channel_for_pin
 from lib.log_setup import logger
 
 
@@ -19,18 +18,28 @@ STRIP2 = "strip2"
 
 
 class LedStrip:
-    def __init__(self, usersettings, ledsettings, driver="rpi_ws281x"):
+    """One LED strip: its geometry, its per-pixel note state, and its pixel target.
+
+    `namespace` selects which settings section the geometry comes from, matching
+    LedSettings. `strip` supplies a ready-made pixel target instead of creating
+    hardware, which is how the second strip is handed a channel of the shared
+    ws2811 controller that the first strip owns.
+    """
+
+    def __init__(self, usersettings, ledsettings, driver="rpi_ws281x", namespace=None, strip=None):
         self.usersettings = usersettings
         self.ledsettings = ledsettings
         self.driver = driver
+        self.namespace = namespace
 
-        self.brightness_percent = int(self.usersettings.get_setting_value("brightness_percent"))
-        self.led_number = int(self.usersettings.get_setting_value("led_count"))
-        self.leds_per_meter = int(self.usersettings.get_setting_value("leds_per_meter"))
-        self.shift = int(self.usersettings.get_setting_value("shift"))
-        self.reverse = int(self.usersettings.get_setting_value("reverse"))
+        self.brightness_percent = _setting_int(usersettings, self._key("brightness_percent"), 50)
+        self.led_number = max(1, _setting_int(usersettings, self._key("led_count"), 176))
+        self.leds_per_meter = max(1, _setting_int(usersettings, self._key("leds_per_meter"), 144))
+        self.shift = _setting_int(usersettings, self._key("shift"), 0)
+        self.reverse = _setting_int(usersettings, self._key("reverse"), 0)
 
         self.brightness = 255 * self.brightness_percent / 100
+        # Gamma belongs to the shared controller, so it is always read from the top level.
         self.led_gamma = float(usersettings.get_setting_value("led_gamma"))
 
         # Second strip. Its settings live under <strip2> in settings.xml. Gamma is
@@ -45,9 +54,12 @@ class LedStrip:
         self.brightness2 = 255 * self.brightness_percent2 / 100
         self.LED_PIN2 = _setting_int(usersettings, (STRIP2, "led_pin"), 13)
 
+        # Set when this strip owns the shared two-channel controller (first strip only).
         self.controller = None
         self.strip_primary = None
         self.strip_secondary = None
+        # A pixel target handed in from outside; when set, no hardware is created here.
+        self.external_strip = strip
 
         # Hold individual led state information, initialized in init_strip()
         self.keylist = None
@@ -71,6 +83,9 @@ class LedStrip:
 
         self.init_strip()
 
+    def _key(self, name):
+        return name if self.namespace is None else (self.namespace, name)
+
     def init_strip(self):
         self.keylist = [0] * self.led_number
         self.keylist_status = [0] * self.led_number
@@ -78,6 +93,11 @@ class LedStrip:
         self.keylist_sustained = [0] * self.led_number  # Track notes sustained by pedal
         self.keylist_external_software = [0] * self.led_number  # Track LEDs lit by external software (channels 11/12)
         self.active_pulses = [] # For Pulse mode
+
+        if self.external_strip is not None:
+            self.strip = self.external_strip
+            self.strip_primary = self.external_strip
+            return
 
         self._release_controller()
         self.strip_secondary = None
@@ -150,8 +170,7 @@ class LedStrip:
         self.controller = controller
         self.strip_primary = controller.channels[primary_channel]
         self.strip_secondary = controller.channels[secondary_channel]
-        self.strip = MirroredStrip(self.strip_primary, self.strip_secondary,
-                                   self._build_index_map())
+        self.strip = self.strip_primary
         self.change_gamma(self.led_gamma)
         logger.info(f"Second LED strip active on pin {self.LED_PIN2} "
                     f"({self.led_number2} LEDs, PWM channel {secondary_channel}).")
@@ -159,19 +178,6 @@ class LedStrip:
 
     def _attach_emu_secondary(self):
         self.strip_secondary = PixelStrip_Emu(int(self.led_number2))
-        self.strip = MirroredStrip(self.strip_primary, self.strip_secondary,
-                                   self._build_index_map())
-
-    def _build_index_map(self):
-        return build_index_map(int(self.led_number), self.leds_per_meter / 72,
-                               self.shift, self.reverse,
-                               int(self.led_number2), self.leds_per_meter2 / 72,
-                               self.shift2, self.reverse2)
-
-    def _refresh_index_map(self):
-        """Re-project strip 1 onto strip 2 after either strip's geometry changed."""
-        if isinstance(self.strip, MirroredStrip):
-            self.strip.set_index_map(self._build_index_map())
 
     def _release_controller(self):
         if self.controller is not None:
@@ -205,7 +211,7 @@ class LedStrip:
         self.brightness_percent = clamp(self.brightness_percent, 1, 100)
         self.brightness = 255 * self.brightness_percent / 100
 
-        self.usersettings.change_setting_value("brightness_percent", self.brightness_percent)
+        self.usersettings.change_setting_value(self._key("brightness_percent"), self.brightness_percent)
 
         self.strip.setBrightness(int(self.brightness))
 
@@ -216,7 +222,7 @@ class LedStrip:
             self.led_number += value
         self.led_number = max(1, self.led_number)
 
-        self.usersettings.change_setting_value("led_count", self.led_number)
+        self.usersettings.change_setting_value(self._key("led_count"), self.led_number)
 
         self.init_strip()
 
@@ -225,8 +231,7 @@ class LedStrip:
             self.shift = value
         else:
             self.shift += value
-        self.usersettings.change_setting_value("shift", self.shift)
-        self._refresh_index_map()
+        self.usersettings.change_setting_value(self._key("shift"), self.shift)
 
     def change_reverse(self, value, fixed_number=False):
         if fixed_number:
@@ -234,42 +239,11 @@ class LedStrip:
         else:
             self.reverse += value
         self.reverse = clamp(self.reverse, 0, 1)
-        self.usersettings.change_setting_value("reverse", self.reverse)
-        self._refresh_index_map()
+        self.usersettings.change_setting_value(self._key("reverse"), self.reverse)
 
     def change_leds_per_meter(self, value):
         self.leds_per_meter = max(1, int(value))
-        self.usersettings.change_setting_value("leds_per_meter", self.leds_per_meter)
-        self._refresh_index_map()
-
-    def change_brightness2(self, value):
-        self.brightness_percent2 = clamp(int(value), 1, 100)
-        self.brightness2 = 255 * self.brightness_percent2 / 100
-        self.usersettings.change_setting_value((STRIP2, "brightness_percent"), self.brightness_percent2)
-        if self.strip_secondary is not None:
-            self.strip_secondary.setBrightness(int(self.brightness2))
-
-    def change_led_count2(self, value):
-        """Persist only. The channel's pixel buffer is sized when the controller is
-        built, and tearing that down while the render loop is running is not safe,
-        so the caller restarts the visualizer to apply it."""
-        self.led_number2 = max(1, int(value))
-        self.usersettings.change_setting_value((STRIP2, "led_count"), self.led_number2)
-
-    def change_leds_per_meter2(self, value):
-        self.leds_per_meter2 = max(1, int(value))
-        self.usersettings.change_setting_value((STRIP2, "leds_per_meter"), self.leds_per_meter2)
-        self._refresh_index_map()
-
-    def change_shift2(self, value):
-        self.shift2 = int(value)
-        self.usersettings.change_setting_value((STRIP2, "shift"), self.shift2)
-        self._refresh_index_map()
-
-    def change_reverse2(self, value):
-        self.reverse2 = clamp(int(value), 0, 1)
-        self.usersettings.change_setting_value((STRIP2, "reverse"), self.reverse2)
-        self._refresh_index_map()
+        self.usersettings.change_setting_value(self._key("leds_per_meter"), self.leds_per_meter)
 
     def set_adjacent_colors(self, note, color, led_turn_off, fading=1):
         if self.ledsettings.adjacent_mode == "RGB" and color != 0 and led_turn_off is not True:

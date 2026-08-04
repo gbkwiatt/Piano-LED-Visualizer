@@ -235,7 +235,7 @@ function initialize_led_settings() {
         });
 
         document.getElementById('brightness').onchange = function () {
-            change_strip_setting("brightness", this.value)
+            change_setting("brightness", this.value)
         }
 
         document.getElementById('backlight_brightness').onchange = function () {
@@ -247,19 +247,19 @@ function initialize_led_settings() {
         }
 
         document.getElementById('led_count').onchange = function () {
-            change_strip_setting("led_count", this.value)
+            change_setting("led_count", this.value)
         }
 
         document.getElementById('leds_per_meter').onchange = function () {
-            change_strip_setting("leds_per_meter", this.value)
+            change_setting("leds_per_meter", this.value)
         }
 
         document.getElementById('shift').onchange = function () {
-            change_strip_setting("shift", this.value)
+            change_setting("shift", this.value)
         }
 
         document.getElementById('reverse').onchange = function () {
-            change_strip_setting("reverse", this.value)
+            change_setting("reverse", this.value)
         }
 
         document.getElementById('sides_color_mode').onchange = function () {

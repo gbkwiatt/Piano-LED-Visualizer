@@ -21,8 +21,11 @@ class MIDIEventProcessor:
     """
     Processes MIDI events and translates them into LED strip visualizations.
     """
-    def __init__(self, midiports, ledstrip, ledsettings, usersettings, saving, learning, menu, color_mode, state_manager=None):
-
+    def __init__(self, midiports, ledstrip, ledsettings, usersettings, saving, learning, menu, color_mode,
+                 state_manager=None, notes_only=False):
+        # notes_only drives the second strip: it renders notes and the sustain pedal
+        # but stays out of recording, sequences and lessons, which belong to strip 1.
+        self.notes_only = notes_only
         self.midiports = midiports
         self.ledstrip = ledstrip
         self.ledsettings = ledsettings
@@ -37,10 +40,15 @@ class MIDIEventProcessor:
         self.last_sequence_advance = 0
 
     def process_midi_events(self):
-        """
-        Main method to process pending MIDI events from the queue.
-        Handles different event types and routes them to appropriate handlers.
-        Selects input source based on playback/learning state.
+        """Drain the queue and render it. Convenience wrapper for the single-strip case."""
+        return self.render_events(self.collect_events())
+
+    def collect_events(self):
+        """Take a bounded slice of pending MIDI messages off the queue.
+
+        Kept separate from rendering because the queue can only be drained once:
+        with two strips, both render the same batch rather than each popping a
+        different half of the stream.
         """
         # Determine which MIDI queue to process based on playback state and practice mode
         if not self.saving.is_playing_midi and not self.learning.is_started_midi:
@@ -55,6 +63,54 @@ class MIDIEventProcessor:
             # Process MIDI file playback
             self.midiports.midipending = self.midiports.midifile_queue
 
+        # Process a bounded slice per frame to avoid jitter and keep FPS stable
+        # group near-identical timestamps and process notes first
+        t0 = time.perf_counter()
+        collected = 0
+
+        # Bounded drain with bursts grouped by timestamp (~1.5ms window)
+        BURST_WINDOW = 0.0015  # 1.5 ms
+        BURST_LIMIT = 64       # avoid starving under continuous streams
+
+        def _unpack_queue_item(item):
+            # (msg, ts) or (msg, ts, source)
+            if len(item) >= 3:
+                return item[0], item[1], item[2]
+            return item[0], item[1], None
+
+        events = []
+        midipending = self.midiports.midipending
+        while midipending and collected < 512 and (time.perf_counter() - t0) < 0.003:
+            head_msg, head_ts, head_source = _unpack_queue_item(midipending.popleft())
+            burst = [(head_msg, head_ts, head_source)]
+            # Coalesce a small burst of messages with almost the same timestamp
+            while midipending and len(burst) < BURST_LIMIT:
+                nxt_msg, nxt_ts, nxt_source = _unpack_queue_item(midipending[0])
+                if abs(nxt_ts - head_ts) <= BURST_WINDOW:
+                    midipending.popleft()
+                    burst.append((nxt_msg, nxt_ts, nxt_source))
+                else:
+                    break
+
+            # Notes first (reduce visual latency for chords), then others
+            for notes_pass in (True, False):
+                for m, ts, src in burst:
+                    if (getattr(m, "type", None) in ("note_on", "note_off")) is not notes_pass:
+                        continue
+                    events.append((m, ts, src))
+                    collected += 1
+                    if collected >= 512:
+                        break
+                if collected >= 512:
+                    break
+
+        return events
+
+    def render_events(self, events):
+        """Render an already-drained batch of MIDI messages onto this strip."""
+        if not events:
+            return False
+
         midi_logging_enabled = int(self.usersettings.get_setting_value("midi_logging")) == 1
         log_sink = self.learning.socket_send if midi_logging_enabled else None
         midiports = self.midiports
@@ -67,11 +123,7 @@ class MIDIEventProcessor:
         handle_control_change = self.handle_control_change
         get_position = get_note_position
         led_count = ledstrip.led_number
-
-        # Process a bounded slice per frame to avoid jitter and keep FPS stable
-        # group near-identical timestamps and process notes first
-        t0 = time.perf_counter()
-        processed = 0
+        notes_only = self.notes_only
 
         midi_mode = "light_show"
         try:
@@ -79,17 +131,12 @@ class MIDIEventProcessor:
         except Exception:
             midi_mode = self.usersettings.get_setting_value("midi_mode") or "light_show"
 
-        def _unpack_queue_item(item):
-            # (msg, ts) or (msg, ts, source)
-            if len(item) >= 3:
-                return item[0], item[1], item[2]
-            return item[0], item[1], None
-
-        def _process_one(msg, msg_timestamp, source=None):
+        for msg, msg_timestamp, source in events:
             # piano/computer already logged in MidiPorts
             if (
                 midi_logging_enabled
                 and log_sink is not None
+                and not notes_only
                 and not getattr(msg, "is_meta", False)
                 and source not in ("piano", "computer")
             ):
@@ -99,17 +146,20 @@ class MIDIEventProcessor:
                 except Exception as e:
                     logger.warning(f"[process midi events] Unexpected exception occurred: {e}")
 
-            midiports.last_activity = time.time()
-            # Update state manager for MIDI activity
-            if self.state_manager:
-                self.state_manager.update_midi_activity()
+            if not notes_only:
+                midiports.last_activity = time.time()
+                # Update state manager for MIDI activity
+                if self.state_manager:
+                    self.state_manager.update_midi_activity()
 
             msg_type = getattr(msg, "type", None)
             velocity = getattr(msg, "velocity", 0)
 
-            # in learning, piano note_ons don't light LEDs (computer guide notes do)
+            # in learning, piano note_ons don't light LEDs (computer guide notes do).
+            # The second strip sits outside lessons, so it always lights them.
             skip_note_on_lighting = (
-                midi_mode == "learning"
+                not notes_only
+                and midi_mode == "learning"
                 and source == "piano"
                 and msg_type == "note_on"
                 and velocity > 0
@@ -132,41 +182,10 @@ class MIDIEventProcessor:
 
             if not skip_note_on_lighting:
                 color_mode.MidiEvent(msg, None, ledstrip)
-            saving.restart_time()
+            if not notes_only:
+                saving.restart_time()
 
-        # Bounded drain with bursts grouped by timestamp (~1.5ms window)
-        BURST_WINDOW = 0.0015  # 1.5 ms
-        BURST_LIMIT  = 64      # avoid starving under continuous streams
-
-        midipending = midiports.midipending
-        while midipending and processed < 512 and (time.perf_counter() - t0) < 0.003:
-            head_msg, head_ts, head_source = _unpack_queue_item(midipending.popleft())
-            burst = [(head_msg, head_ts, head_source)]
-            # Coalesce a small burst of messages with almost the same timestamp
-            while midipending and len(burst) < BURST_LIMIT:
-                nxt_msg, nxt_ts, nxt_source = _unpack_queue_item(midipending[0])
-                if abs(nxt_ts - head_ts) <= BURST_WINDOW:
-                    midipending.popleft()
-                    burst.append((nxt_msg, nxt_ts, nxt_source))
-                else:
-                    break
-
-            # Notes first (reduce visual latency for chords), then others
-            for m, ts, src in burst:
-                if getattr(m, "type", None) in ("note_on", "note_off"):
-                    _process_one(m, ts, src)
-                    processed += 1
-                    if processed >= 512:
-                        break
-
-            if processed < 512:
-                for m, ts, src in burst:
-                    if getattr(m, "type", None) not in ("note_on", "note_off"):
-                        _process_one(m, ts, src)
-                        processed += 1
-                        if processed >= 512:
-                            break
-        return processed > 0
+        return True
     
     def handle_note_off(self, msg, msg_timestamp, note_position):
         """
@@ -230,7 +249,7 @@ class MIDIEventProcessor:
             self._apply_idle_color(note_position, idle_color, use_backlight)
 
         # Record the note-off event if recording is active
-        if self.saving.is_recording:
+        if self.saving.is_recording and not self.notes_only:
             self.saving.add_track("note_off", msg.note, velocity, msg_timestamp)
 
     def handle_note_on(self, msg, msg_timestamp, note_position):
@@ -323,7 +342,7 @@ class MIDIEventProcessor:
                 self.ledstrip.set_adjacent_colors(note_position, s_color, False)
 
         # Record the note-on event if recording is active
-        if self.saving.is_recording:
+        if self.saving.is_recording and not self.notes_only:
             if self.ledsettings.color_mode == "Multicolor":
                 import webcolors as wc
                 # Include color information in multicolor mode
@@ -368,7 +387,7 @@ class MIDIEventProcessor:
 
         current_time = time.time()
         # Handle sequence advancement based on control values
-        if self.ledsettings.sequence_active and self.ledsettings.next_step is not None:
+        if not self.notes_only and self.ledsettings.sequence_active and self.ledsettings.next_step is not None:
             try:
                 # Check if the incoming control matches the configured control for sequence advancement
                 if int(control) == int(self.ledsettings.control_number):
@@ -387,7 +406,7 @@ class MIDIEventProcessor:
                 logger.warning(f"[handle control change] Unexpected exception occurred: {e}")
 
         # Record the control change if recording is active
-        if self.saving.is_recording:
+        if self.saving.is_recording and not self.notes_only:
             self.saving.add_control_change("control_change", 0, control, value, msg_timestamp)
 
     def clear_all_note_leds(self):

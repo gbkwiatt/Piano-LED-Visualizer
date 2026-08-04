@@ -6,7 +6,7 @@ from lib import colormaps as cmap
 from lib.functions import startup_animation, fastColorWipe
 from lib.learnmidi import LearnMIDI
 from lib.ledsettings import LedSettings
-from lib.ledstrip import LedStrip
+from lib.ledstrip import LedStrip, STRIP2
 from lib.log_setup import logger
 from lib.menulcd import MenuLCD
 from lib.midiports import MidiPorts
@@ -43,6 +43,18 @@ class ComponentInitializer:
         
         # Phase 3: Initialize LedStrip (depends on LedSettings)
         self.ledstrip = LedStrip(self.usersettings, self.ledsettings, self.args.leddriver)
+
+        # Second strip, when enabled and its channel came up. It gets its own settings
+        # and its own note state, and drives the other channel of the shared controller.
+        self.ledsettings2 = None
+        self.ledstrip2 = None
+        if self.ledstrip.strip_secondary is not None:
+            self.ledsettings2 = LedSettings(self.usersettings, namespace=STRIP2)
+            self.ledstrip2 = LedStrip(self.usersettings, self.ledsettings2, self.ledstrip.driver,
+                                      namespace=STRIP2, strip=self.ledstrip.strip_secondary)
+            # No menu: the LCD drives the first strip only.
+            self.ledsettings2.add_instance(None, self.ledstrip2)
+
         
         # Phase 4: Initialize Hotspot (depends on Platform)
         self.hotspot = Hotspot(self.platform)

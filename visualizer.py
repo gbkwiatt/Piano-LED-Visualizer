@@ -69,7 +69,9 @@ class VisualizerApp:
                                                          self.ci.menu,
                                                          self.ci.hotspot,
                                                          self.ci.platform,
-                                                         self.state_manager)
+                                                         self.state_manager,
+                                                         self.ci.ledsettings2,
+                                                         self.ci.ledstrip2)
         self.midi_event_processor = MIDIEventProcessor(self.ci.midiports,
                                                        self.ci.ledstrip,
                                                        self.ci.ledsettings,
@@ -85,6 +87,32 @@ class VisualizerApp:
                                                          self.color_mode,
                                                          self.last_sustain,
                                                          self.pedal_deadzone)
+
+        # Second strip: its own colour mode, its own fades, and a notes-only MIDI
+        # renderer. It shares the drained MIDI batch with the first strip but stays
+        # out of lessons, animations, sequences and recording.
+        self.color_mode2 = None
+        self.midi_event_processor2 = None
+        self.led_effects_processor2 = None
+        if self.ci.ledstrip2 is not None:
+            self.color_mode_name2 = self.ci.ledsettings2.color_mode
+            self.color_mode2 = ColorMode(self.color_mode_name2, self.ci.ledsettings2)
+            self.midi_event_processor2 = MIDIEventProcessor(self.ci.midiports,
+                                                            self.ci.ledstrip2,
+                                                            self.ci.ledsettings2,
+                                                            self.ci.usersettings,
+                                                            self.ci.saving,
+                                                            self.ci.learning,
+                                                            self.ci.menu,
+                                                            self.color_mode2,
+                                                            self.state_manager,
+                                                            notes_only=True)
+            self.led_effects_processor2 = LEDEffectsProcessor(self.ci.ledstrip2,
+                                                              self.ci.ledsettings2,
+                                                              self.ci.menu,
+                                                              self.color_mode2,
+                                                              self.last_sustain,
+                                                              self.pedal_deadzone)
 
         # Frame rate counters
         self.event_loop_stamp = time.perf_counter()
@@ -152,12 +180,20 @@ class VisualizerApp:
             self.event_loop_stamp = loop_start
 
             fade_processed = self.led_effects_processor.process_fade_effects(event_loop_time)
-            midi_processed = self.midi_event_processor.process_midi_events()
+            # Drain once, render to every strip: the queue cannot be popped twice.
+            events = self.midi_event_processor.collect_events()
+            midi_processed = self.midi_event_processor.render_events(events)
+
+            if self.midi_event_processor2 is not None:
+                fade_processed |= self.led_effects_processor2.process_fade_effects(event_loop_time)
+                midi_processed |= self.midi_event_processor2.render_events(events)
+                self.check_color_mode2(ci.ledsettings2)
 
             # Only update LEDs if effects changed them or MIDI events occurred
             should_update = fade_processed or midi_processed
-            
+
             if should_update:
+                # One render call drives both channels of the shared controller.
                 ledstrip.strip.show()
                 self.update_fps_stats()
             else:
@@ -236,6 +272,15 @@ class VisualizerApp:
             self.midi_event_processor.color_mode = self.color_mode
             self.led_effects_processor.color_mode = self.color_mode
             logger.info(f"Color mode changed to {self.color_mode_name}")
+
+    def check_color_mode2(self, ledsettings2):
+        if ledsettings2.color_mode != self.color_mode_name2 or ledsettings2.incoming_setting_change:
+            ledsettings2.incoming_setting_change = False
+            self.color_mode2 = ColorMode(ledsettings2.color_mode, ledsettings2)
+            self.color_mode_name2 = ledsettings2.color_mode
+            self.midi_event_processor2.color_mode = self.color_mode2
+            self.led_effects_processor2.color_mode = self.color_mode2
+            logger.info(f"Second strip colour mode changed to {self.color_mode_name2}")
 
     def check_settings_changes(self, usersettings, current_time):
         ci = self.ci

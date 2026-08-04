@@ -144,7 +144,9 @@ class LedSettings:
     def add_instance(self, menu, ledstrip):
         self.menu = menu
         self.ledstrip = ledstrip
-        menu.update_multicolor(self.multicolor)
+        # The second strip has no menu: the LCD only ever drives the first one.
+        if menu is not None:
+            menu.update_multicolor(self.multicolor)
 
     def add_note_offset(self):
         self.note_offsets.insert(0, [100, 1])
@@ -179,8 +181,9 @@ class LedSettings:
         self._set("multicolor", self.multicolor)
         self._set("multicolor_range", self.multicolor_range)
 
-        self.menu.update_multicolor(self.multicolor)
-        self.menu.show()
+        if self.menu is not None:
+            self.menu.update_multicolor(self.multicolor)
+            self.menu.show()
         self.incoming_setting_change = True
 
     def deletecolor(self, key):
@@ -190,9 +193,10 @@ class LedSettings:
         self._set("multicolor", self.multicolor)
         self._set("multicolor_range", self.multicolor_range)
 
-        self.menu.update_multicolor(self.multicolor)
-        self.menu.go_back()
-        self.menu.show()
+        if self.menu is not None:
+            self.menu.update_multicolor(self.multicolor)
+            self.menu.go_back()
+            self.menu.show()
         self.incoming_setting_change = True
 
     def change_multicolor(self, choice, location, value):

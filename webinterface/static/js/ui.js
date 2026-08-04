@@ -595,63 +595,31 @@ function changeHotspotPassword() {
         });
 }
 
-// The Brightness and Adjustments panels edit whichever strip is selected here.
-// Colors, light mode, backlight, gamma and note offsets stay shared.
+// Which strip the LED Settings page is editing. Every control on the page is
+// per-strip: the server reads and writes the selected strip's own settings
+// section, so the only thing the UI has to do is say which strip it means.
 let active_led_strip = 1;
 
-const STRIP_SETTING_NAMES = {
-    brightness: ["brightness", "brightness2"],
-    led_count: ["led_count", "led_count2"],
-    leds_per_meter: ["leds_per_meter", "leds_per_meter2"],
-    shift: ["shift", "shift2"],
-    reverse: ["reverse", "reverse2"]
-};
-
-const STRIP_RESPONSE_KEYS = {
-    brightness: ["brightness", "brightness2"],
-    led_count: ["led_count", "led_count2"],
-    leds_per_meter: ["leds_per_meter", "leds_per_meter2"],
-    shift: ["led_shift", "led_shift2"],
-    reverse: ["led_reverse", "led_reverse2"]
-};
-
-// Writes back into config_settings too: nothing re-fetches after a plain setting
-// change, and switching tabs repopulates the form from that cache.
-function change_strip_setting(field, value) {
-    change_setting(STRIP_SETTING_NAMES[field][active_led_strip - 1], value);
-    if (config_settings) {
-        config_settings[STRIP_RESPONSE_KEYS[field][active_led_strip - 1]] = value;
-    }
-}
-
-function apply_strip_settings_to_form(settings) {
-    if (!settings || !document.getElementById("led_count")) {
-        return;
-    }
-    const value = field => settings[STRIP_RESPONSE_KEYS[field][active_led_strip - 1]];
-
-    document.getElementById("brightness").value = value("brightness");
-    document.getElementById("brightness_percent").value = value("brightness") + "%";
-    document.getElementById("led_count").value = value("led_count");
-    document.getElementById("leds_per_meter").value = value("leds_per_meter");
-    document.getElementById("shift").value = value("shift");
-    document.getElementById("reverse").value = value("reverse");
-}
-
-function set_active_led_strip(strip) {
-    active_led_strip = strip;
-
+function update_strip_tab_styles() {
     document.querySelectorAll(".strip-tab").forEach(tab => {
-        const selected = Number(tab.dataset.strip) === strip;
+        const selected = Number(tab.dataset.strip) === active_led_strip;
         tab.classList.toggle("glass", selected);
         tab.classList.toggle("shadow-glass", selected);
         tab.classList.toggle("opacity-50", !selected);
     });
     document.querySelectorAll(".strip-badge").forEach(badge => {
-        badge.textContent = "LED " + strip;
+        badge.textContent = "LED " + active_led_strip;
     });
+}
 
-    apply_strip_settings_to_form(config_settings);
+function set_active_led_strip(strip) {
+    if (strip === active_led_strip) {
+        return;
+    }
+    active_led_strip = strip;
+    update_strip_tab_styles();
+    // Repopulate the whole page from the newly selected strip's settings.
+    get_settings();
 }
 
 // With one strip there is nothing to switch between, so the tabs and the per-panel
@@ -731,12 +699,16 @@ function get_settings(home = true) {
                     document.getElementById("gamma_correction").value = response["led_gamma"];
                     document.getElementById("backlight_brightness").value = response["backlight_brightness"];
                     document.getElementById("backlight_brightness_percent").value = response["backlight_brightness"] + "%";
-                    if (response["disable_backlight_on_idle"] === "1") {
-                        document.getElementById("disable_backlight").checked = true;
-                    }
                     document.getElementById("skipped_notes").value = response["skipped_notes"];
+                    document.getElementById("brightness").value = response["brightness"];
+                    document.getElementById("brightness_percent").value = response["brightness"] + "%";
+                    document.getElementById("led_count").value = response["led_count"];
+                    document.getElementById("leds_per_meter").value = response["leds_per_meter"];
+                    document.getElementById("shift").value = response["led_shift"];
+                    document.getElementById("reverse").value = response["led_reverse"];
+                    document.getElementById("disable_backlight").checked = response["disable_backlight_on_idle"] === "1";
                     apply_strip2_settings_to_form(response);
-                    set_active_led_strip(active_led_strip);
+                    update_strip_tab_styles();
                     document.getElementById("sides_color").dispatchEvent(new Event('input'));
                     document.getElementById("backlight_color").dispatchEvent(new Event('input'));
                 }
@@ -826,7 +798,7 @@ function get_settings(home = true) {
 
         }
     };
-    xhttp.open("GET", "/api/get_settings", true);
+    xhttp.open("GET", "/api/get_settings?strip=" + encodeURIComponent(active_led_strip), true);
     xhttp.send();
 }
 
