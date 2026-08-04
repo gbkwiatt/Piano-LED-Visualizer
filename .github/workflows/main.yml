@@ -97,7 +97,7 @@ jobs:
     - name: Install Piano LED Visualizer
       run: |
         sudo chroot rootfs /bin/bash -c " \
-          git clone https://github.com/onlaj/Piano-LED-Visualizer /home/plv/Piano-LED-Visualizer && \
+          git clone https://github.com/gbkwiatt/Piano-LED-Visualizer /home/plv/Piano-LED-Visualizer && \
           pip3 install -r /home/plv/Piano-LED-Visualizer/requirements.txt"
 
         # Configure service
