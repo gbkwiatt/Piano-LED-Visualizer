@@ -219,8 +219,20 @@ class PlatformRasp(PlatformBase):
             shell=True,
         )
         call("sudo git clean -fdx Songs/cache", shell=True)
-        call("sudo git pull origin master", shell=True)
-        PlatformRasp._install_requirements(project_root, use_venv)
+        if call("sudo git pull origin master", shell=True) != 0:
+            logger.error("git pull failed, leaving the service alone: nothing was updated.")
+            return
+        if not PlatformRasp._install_requirements(project_root, use_venv):
+            logger.error(
+                "Dependency install failed. The new code is on disk but the service still runs "
+                "the old one; restart it once the install problem is fixed."
+            )
+            return
+
+        # The pulled code only takes effect on restart, and this process is running
+        # the old copy of it, so it has to be the last thing done here.
+        logger.info("Update complete, restarting to run the new code.")
+        PlatformRasp.restart_visualizer()
 
     @staticmethod
     def shutdown():
