@@ -1952,6 +1952,51 @@ def get_system_time():
         now = datetime.datetime.now()
         return jsonify(success=True, time=now.strftime("%a %b %d %H:%M:%S %Z %Y"))
 
+_update_lock = threading.Lock()
+_update_status = {"state": "idle", "stage": "", "message": ""}
+
+
+def _report_update_progress(stage, message=""):
+    with _update_lock:
+        _update_status["state"] = "failed" if stage == "failed" else "running"
+        _update_status["stage"] = stage
+        _update_status["message"] = message
+
+
+@webinterface.route('/api/update_visualizer', methods=['GET'])
+def start_update_visualizer():
+    """Run the update in the background so its progress can be polled.
+
+    The update ends by restarting the service, so this request is answered before
+    any of it starts: the reply would otherwise never be sent.
+    """
+    with _update_lock:
+        if _update_status["state"] == "running":
+            return jsonify(success=False, error="An update is already running.")
+        _update_status.update({"state": "running", "stage": "starting", "message": ""})
+
+    def run_update():
+        try:
+            app_state.platform.update_visualizer(progress=_report_update_progress)
+        except Exception as e:
+            logger.warning(f"[update visualizer] Unexpected exception occurred: {e}")
+            _report_update_progress("failed", str(e))
+            return
+        # Only reached where restarting is a no-op, such as an unsupported platform.
+        with _update_lock:
+            if _update_status["state"] == "running":
+                _update_status.update({"state": "done", "stage": "restarting"})
+
+    threading.Thread(target=run_update, name="visualizer-update", daemon=True).start()
+    return jsonify(success=True)
+
+
+@webinterface.route('/api/update_status', methods=['GET'])
+def update_status():
+    with _update_lock:
+        return jsonify(success=True, **_update_status)
+
+
 @webinterface.route('/api/get_settings', methods=['GET'])
 def get_settings():
     response = {}

@@ -125,3 +125,7 @@ class ComponentInitializer:
         self.midiports.start_midi_monitor()
 
         fastColorWipe(self.ledstrip.strip, True, self.ledsettings)
+        # The second strip holds its own pixels and its own backlight settings, so it
+        # needs its own paint: nothing else lights it until a setting changes.
+        if self.ledstrip2 is not None:
+            fastColorWipe(self.ledstrip2.strip, True, self.ledsettings2)

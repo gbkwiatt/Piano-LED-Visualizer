@@ -232,10 +232,27 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
                         </svg>
                     </button>
-                    <button onclick="change_setting('update_rpi', '0');temporary_disable_button(this, 25000);"
+                    <button onclick="start_visualizer_update(this);"
                             class="w-full h-10 outline-none glass-light font-bold py-2 px-2 rounded-glass inline-flex items-center justify-center hidden">
                         <span class="uppercase text-xs" data-translate="confirm">Confirm</span>
                     </button>
+                    <div id="update_progress" class="hidden mt-2">
+                        <div class="flex items-center space-x-2">
+                            <svg id="update_progress_spinner" class="animate-spin h-4 w-4 text-blue-500 shrink-0"
+                                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                            <span id="update_progress_text"
+                                  class="text-xs font-semibold text-gray-600 dark:text-gray-400"></span>
+                        </div>
+                        <div class="mt-2 h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                            <div id="update_progress_bar"
+                                 class="h-full w-0 rounded-full bg-blue-500 transition-all duration-700"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

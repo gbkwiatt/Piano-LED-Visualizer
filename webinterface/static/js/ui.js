@@ -2564,6 +2564,97 @@ function handle_confirmation_button(element, delay = 1000) {
         element.classList.remove('pointer-events-none', "animate-pulse");
     }, delay);
 }
+
+// Each stage the update reports, with how far along it is and the English text to
+// fall back on where a language has no translation for it yet.
+const UPDATE_STAGES = {
+    starting: {percent: 5, key: "update_stage_starting", text: "Starting update..."},
+    preparing: {percent: 15, key: "update_stage_preparing", text: "Preparing files..."},
+    pulling: {percent: 35, key: "update_stage_pulling", text: "Downloading latest version..."},
+    installing: {percent: 60, key: "update_stage_installing", text: "Installing dependencies..."},
+    restarting: {percent: 85, key: "update_stage_restarting", text: "Restarting visualizer..."},
+};
+let update_server_went_away = false;
+
+function update_text(key, fallback) {
+    const translated = translate(key);
+    return translated === key ? fallback : translated;
+}
+
+function show_update_stage(stage) {
+    const step = UPDATE_STAGES[stage] || UPDATE_STAGES.starting;
+    document.getElementById("update_progress_text").textContent = update_text(step.key, step.text);
+    document.getElementById("update_progress_bar").style.width = step.percent + "%";
+}
+
+function start_visualizer_update(button) {
+    button.classList.add("hidden");
+    document.getElementById("update_progress").classList.remove("hidden");
+    update_server_went_away = false;
+    show_update_stage("starting");
+
+    fetch("/api/update_visualizer")
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                setTimeout(poll_update_status, 1000);
+            } else {
+                update_finished(data.error, false);
+            }
+        })
+        .catch(() => update_finished(update_text("update_failed", "Could not start the update."), false));
+}
+
+function poll_update_status() {
+    fetch("/api/update_status", {cache: "no-store"})
+        .then(response => response.json())
+        .then(data => {
+            // Answering again after going away means the restart is done, and this
+            // is the new process: its own status is idle, so it cannot say so.
+            if (update_server_went_away) {
+                update_finished(update_text("update_complete", "Update complete, reloading..."), true);
+                return;
+            }
+            if (data.state === "failed") {
+                update_finished(data.message || update_text("update_failed", "Update failed."), false);
+                return;
+            }
+            if (data.state === "done") {
+                update_finished(update_text("update_complete", "Update complete, reloading..."), true);
+                return;
+            }
+            show_update_stage(data.stage);
+            setTimeout(poll_update_status, 1500);
+        })
+        .catch(() => {
+            // Expected: the service drops the connection as it restarts into the
+            // new code. Keep asking until it comes back up.
+            update_server_went_away = true;
+            show_update_stage("restarting");
+            setTimeout(poll_update_status, 2000);
+        });
+}
+
+function update_finished(message, reload) {
+    const panel = document.getElementById("update_progress");
+    const text = document.getElementById("update_progress_text");
+    const bar = document.getElementById("update_progress_bar");
+
+    document.getElementById("update_progress_spinner").classList.add("hidden");
+    text.textContent = message;
+    bar.style.width = "100%";
+
+    if (reload) {
+        setTimeout(() => location.reload(), 1500);
+        return;
+    }
+
+    bar.classList.remove("bg-blue-500");
+    bar.classList.add("bg-red-500");
+    text.classList.add("text-red-500");
+    // Leave the message up, but put the button back so it can be tried again.
+    panel.previousElementSibling.previousElementSibling.classList.remove("hidden");
+}
 // --- Added scoring & session summary features (merged) ---
 
 function handleScoreUpdate(data) {

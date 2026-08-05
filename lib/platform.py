@@ -194,12 +194,23 @@ class PlatformRasp(PlatformBase):
         return True
 
     @staticmethod
-    def update_visualizer():
+    def update_visualizer(progress=None):
+        """Pull the latest code and restart into it.
+
+        `progress` is called with (stage, message) as each step starts, so a caller
+        can show what is happening. The final stage never completes from here: the
+        restart kills this process.
+        """
+        def report(stage, message=""):
+            if progress is not None:
+                progress(stage, message)
+
         project_root = PlatformRasp._project_root()
         try:
             os.chdir(project_root)
         except OSError as e:
             logger.error(f"Could not chdir to project root {project_root}: {e}")
+            report("failed", f"Could not open {project_root}")
             return
 
         codename = PlatformRasp._os_codename()
@@ -210,6 +221,7 @@ class PlatformRasp(PlatformBase):
             f"deps={'venv' if use_venv else 'system pip'})"
         )
 
+        report("preparing")
         call("sudo git reset --hard HEAD", shell=True)
         call("sudo git checkout .", shell=True)
         call(
@@ -219,19 +231,25 @@ class PlatformRasp(PlatformBase):
             shell=True,
         )
         call("sudo git clean -fdx Songs/cache", shell=True)
+        report("pulling")
         if call("sudo git pull origin master", shell=True) != 0:
             logger.error("git pull failed, leaving the service alone: nothing was updated.")
+            report("failed", "Could not pull the latest code. See visualizer.log.")
             return
+
+        report("installing")
         if not PlatformRasp._install_requirements(project_root, use_venv):
             logger.error(
                 "Dependency install failed. The new code is on disk but the service still runs "
                 "the old one; restart it once the install problem is fixed."
             )
+            report("failed", "Installing dependencies failed. See visualizer.log.")
             return
 
         # The pulled code only takes effect on restart, and this process is running
         # the old copy of it, so it has to be the last thing done here.
         logger.info("Update complete, restarting to run the new code.")
+        report("restarting")
         PlatformRasp.restart_visualizer()
 
     @staticmethod
