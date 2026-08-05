@@ -36,6 +36,13 @@ class LEDEffectsProcessor:
         self._fade_carry = stepped - whole
         return whole
 
+    def _backlight_rgb(self, index):
+        """The colour a pixel rests at once no note is holding it."""
+        if self.menu.screensaver_is_running:
+            return 0, 0, 0
+        packed = backlight_color(self.ledsettings, index, self.ledstrip.led_number)
+        return (packed >> 16) & 0xFF, (packed >> 8) & 0xFF, packed & 0xFF
+
     def process_fade_effects(self, event_loop_time):
         any_led_changed = False
         decrease_amount = self._fade_step(event_loop_time)
@@ -60,10 +67,15 @@ class LEDEffectsProcessor:
 
             if self.ledsettings.mode == "Velocity" or self.ledsettings.mode == "Pedal" or (
                     self.ledsettings.mode == "Fading" and self.ledstrip.keylist_status[n] == 0):
-                fading = (strength / float(100)) / 10
-                red = int(red * fading)
-                green = int(green * fading)
-                blue = int(blue * fading)
+                # 1001 marks a key still held in Fading mode, so cap the ratio at 1.
+                fading = min(1.0, (strength / float(100)) / 10)
+                # Fade towards the backlight rather than towards black, otherwise the
+                # pixel reaches 0, then jumps to the backlight colour in one frame.
+                rest_red, rest_green, rest_blue = self._backlight_rgb(n)
+                resting = 1 - fading
+                red = int(red * fading + rest_red * resting)
+                green = int(green * fading + rest_green * resting)
+                blue = int(blue * fading + rest_blue * resting)
 
                 self.ledstrip.keylist[n] = max(0, self.ledstrip.keylist[n] - decrease_amount)
                 led_changed = True
@@ -83,8 +95,7 @@ class LEDEffectsProcessor:
                     led_changed = True
 
             if self.ledstrip.keylist[n] <= 0 and self.menu.screensaver_is_running is not True:
-                idle = backlight_color(self.ledsettings, n, self.ledstrip.led_number)
-                red, green, blue = (idle >> 16) & 0xFF, (idle >> 8) & 0xFF, idle & 0xFF
+                red, green, blue = self._backlight_rgb(n)
                 led_changed = True
 
             if led_changed:
