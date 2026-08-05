@@ -12,9 +12,33 @@ class LEDEffectsProcessor:
         self.color_mode = color_mode
         self.last_sustain = last_sustain
         self.pedal_deadzone = pedal_deadzone
+        self._fade_carry = 0.0
+
+    def _fade_step(self, event_loop_time):
+        """How far every fading LED drops this frame.
+
+        The speed only depends on the mode, so it is the same for every LED and is
+        worked out once. The fraction is carried between frames because frames are
+        no longer a fixed length: a short one would truncate to a zero step and
+        stall the fade outright at the slower speeds (10s over a 1000 step scale
+        needs a frame of at least 10ms just to move by one).
+        """
+        mode = self.ledsettings.mode
+        if mode == "Velocity":
+            speed = self.ledsettings.velocity_speed
+        elif mode == "Pedal":
+            speed = self.ledsettings.pedal_speed
+        else:
+            speed = self.ledsettings.fadingspeed
+
+        stepped = (event_loop_time / float(speed / 1000)) * 1000 + self._fade_carry
+        whole = int(stepped)
+        self._fade_carry = stepped - whole
+        return whole
 
     def process_fade_effects(self, event_loop_time):
         any_led_changed = False
+        decrease_amount = self._fade_step(event_loop_time)
         for n, strength in enumerate(self.ledstrip.keylist):
             if strength <= 0:
                 continue
@@ -41,17 +65,6 @@ class LEDEffectsProcessor:
                 green = int(green * fading)
                 blue = int(blue * fading)
 
-                # Use mode-specific speed
-                if self.ledsettings.mode == "Fading":
-                    speed = self.ledsettings.fadingspeed
-                elif self.ledsettings.mode == "Velocity":
-                    speed = self.ledsettings.velocity_speed
-                elif self.ledsettings.mode == "Pedal":
-                    speed = self.ledsettings.pedal_speed
-                else:
-                    speed = self.ledsettings.fadingspeed
-
-                decrease_amount = int((event_loop_time / float(speed / 1000)) * 1000)
                 self.ledstrip.keylist[n] = max(0, self.ledstrip.keylist[n] - decrease_amount)
                 led_changed = True
 

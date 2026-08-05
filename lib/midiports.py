@@ -73,6 +73,9 @@ class MidiPorts:
         self.websocket_midi_queue = deque(maxlen=1000)
         self.drop_counter = 0
         self.last_activity = 0
+        # Wakes the visualizer loop the moment a note is queued, instead of it
+        # finding the note on its next scheduled poll.
+        self.led_wakeup = threading.Event()
 
         self.piano_in = None
         self.piano_out = None
@@ -495,6 +498,7 @@ class MidiPorts:
             except Exception:
                 pass
         q.append((msg, ts, source))
+        self.led_wakeup.set()
 
     def _forward_to_port(self, port, msg):
         if port is None:

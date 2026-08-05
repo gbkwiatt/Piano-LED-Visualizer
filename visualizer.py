@@ -168,6 +168,8 @@ class VisualizerApp:
             self.check_activity_backlight(ledstrip, ledsettings, midiports, menu, now_wall)
             self.update_display(elapsed_time, menu)
             self.check_color_mode(ledsettings)
+            if self.midi_event_processor2 is not None:
+                self.check_color_mode2(ci.ledsettings2)
             self.check_settings_changes(usersettings, now_wall)
             platform.manage_hotspot(hotspot, usersettings, midiports, False, now_wall)
             self.gpio_handler.process_gpio_keys()
@@ -175,16 +177,22 @@ class VisualizerApp:
             event_loop_time = loop_start - self.event_loop_stamp
             self.event_loop_stamp = loop_start
 
+            # Both fades run before the drain so only rendering sits between a note
+            # arriving and show(): every strip's fade would otherwise delay the note
+            # that was just collected, since one show() pushes both channels.
             fade_processed = self.led_effects_processor.process_fade_effects(event_loop_time)
+            if self.led_effects_processor2 is not None:
+                fade_processed |= self.led_effects_processor2.process_fade_effects(event_loop_time)
+
+            # Cleared before the drain, never after: a note arriving mid-drain then
+            # leaves the flag set and wakes the next pass instead of being missed.
+            midiports.led_wakeup.clear()
+
             # Drain once, render to every strip: the queue cannot be popped twice.
             events = self.midi_event_processor.collect_events()
             midi_processed = self.midi_event_processor.render_events(events)
-
             if self.midi_event_processor2 is not None:
-                fade_processed |= self.led_effects_processor2.process_fade_effects(event_loop_time)
                 midi_processed |= self.midi_event_processor2.render_events(events)
-                self.check_color_mode2(ci.ledsettings2)
-
 
             # Only update LEDs if effects changed them or MIDI events occurred
             should_update = fade_processed or midi_processed
@@ -196,7 +204,10 @@ class VisualizerApp:
             else:
                 # In IDLE with no activity, set FPS to reflect actual state
                 ledstrip.current_fps = 1.0 / max(sleep_interval, 0.001) if sleep_interval > 0 else 0
-            time.sleep(sleep_interval)  # Dynamic delay based on system state
+            # Returns the moment a note is queued, so the state's delay is only an
+            # upper bound: the periodic work still runs at its normal cadence, but a
+            # note no longer waits for it.
+            midiports.led_wakeup.wait(sleep_interval)
 
     def update_fps_stats(self):
         self.frame_count += 1
