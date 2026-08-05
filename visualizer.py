@@ -115,7 +115,6 @@ class VisualizerApp:
         self.event_loop_stamp = time.perf_counter()
         self.frame_count = 0
         self.frame_avg_stamp = time.perf_counter()
-        self.backlight_cleared = False
 
         # State tracking
         self.display_cycle = 0
@@ -166,7 +165,7 @@ class VisualizerApp:
 
             self.check_screensaver(midiports, menu, now_wall)
             manage_idle_animation(ledstrip, ledsettings, menu, midiports, self.state_manager)
-            self.check_activity_backlight(ledstrip, ledsettings, midiports, now_wall)
+            self.check_activity_backlight(ledstrip, ledsettings, midiports, menu, now_wall)
             self.update_display(elapsed_time, menu)
             self.check_color_mode(ledsettings)
             self.check_settings_changes(usersettings, now_wall)
@@ -223,18 +222,22 @@ class VisualizerApp:
         if self.state_manager.should_run_screensaver(menu):
             screensaver(menu, midiports, ci.saving, ci.ledstrip, ci.ledsettings, self.state_manager)
 
-    def check_activity_backlight(self, ledstrip, ledsettings, midiports, current_time):
-        now = current_time
-        if (now - midiports.last_activity) > 120:
-            if not self.backlight_cleared:
-                ledsettings.backlight_stopped = True
-                fastColorWipe(ledstrip.strip, True, ledsettings)
-                self.backlight_cleared = True
-        else:
-            if self.backlight_cleared:
-                ledsettings.backlight_stopped = False
-                fastColorWipe(ledstrip.strip, True, ledsettings)
-                self.backlight_cleared = False
+    def check_activity_backlight(self, ledstrip, ledsettings, midiports, menu, current_time):
+        # Web and button use count as activity too, otherwise the backlight cannot be
+        # turned back on from the web interface: every setting change repaints it
+        # through fastColorWipe, which stays black while backlight_stopped is set.
+        last_activity = max(midiports.last_activity, menu.last_activity)
+        idle = (current_time - last_activity) > 120
+
+        strips = [(ledsettings, ledstrip)]
+        if self.ci.ledstrip2 is not None:
+            strips.append((self.ci.ledsettings2, self.ci.ledstrip2))
+
+        for settings, strip in strips:
+            stopped = idle and settings.disable_backlight_on_idle == 1
+            if stopped != settings.backlight_stopped:
+                settings.backlight_stopped = stopped
+                fastColorWipe(strip.strip, True, settings)
 
     def update_display(self, elapsed_time, menu):
         now = time.monotonic()

@@ -73,7 +73,7 @@ class LedSettings:
 
         self.backlight_brightness = int(self.get_setting("backlight_brightness"))
         self.backlight_brightness_percent = int(self.get_setting("backlight_brightness_percent"))
-        self.disable_backlight_on_idle = self.get_setting("disable_backlight_on_idle")
+        self.disable_backlight_on_idle = int(self.get_setting("disable_backlight_on_idle") or 0)
         self.backlight_stopped = False
 
         self.led_animation_brightness_percent = int(self.get_setting("led_animation_brightness_percent"))
